@@ -35,7 +35,7 @@ respond to any request with a response "Hello world!":
 - Your handler runs inside a fiber, so it may block on I/O without blocking the
   server: other requests continue to be served while it is suspended.
 - Then finally build and run the server. It will listen on STDIO by default.
-  
+
 
 If you run this example, you should be able to connect to the language server
 and it should respond (incorrectly) to all requests with "Hello World!".

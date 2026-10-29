@@ -27,7 +27,7 @@ class CancellationMiddlewareTest extends AsyncTestCase
         parent::setUp();
         $this->runner = $this->prophesize(MethodRunner::class);
     }
-    
+
     public function testDelegatesToNextHandlerIfMessageIsNotNotification(): void
     {
         $response = $this->createMiddleware()->process(

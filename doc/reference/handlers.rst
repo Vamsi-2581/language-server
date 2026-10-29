@@ -1,7 +1,7 @@
 Method Handlers
 ===============
 
-Method handlers handle the RPC calls from the client. 
+Method handlers handle the RPC calls from the client.
 
 They look like this:
 
@@ -58,7 +58,7 @@ This strategy will see if your method implements an LSP ``*Params`` class and
 automatically instantaite it for you:
 
 .. code-block:: php
-    
+
     <?php
 
     class MyHandler implements Handler
@@ -99,7 +99,7 @@ this request and continue serving others. Anything that waits on I/O (including
 ``Amp\delay()``) suspends only the current request.
 
 .. code-block:: php
-    
+
     <?php
 
     use function Amp\delay;
@@ -151,7 +151,7 @@ The ``Cancellation`` passed to the method handler can throw an exception
 if the request is cancelled as follows:
 
 .. code-block:: php
-    
+
     <?php
 
     use Amp\Cancellation;
