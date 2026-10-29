@@ -8,7 +8,6 @@ use Amp\ByteStream\WritableBuffer;
 use Amp\PHPUnit\AsyncTestCase;
 use Closure;
 use PHPUnit\Framework\Assert;
-use Phpactor\LanguageServer\Core\AsyncCall;
 use Phpactor\LanguageServer\Core\Dispatcher\Dispatcher\ClosureDispatcher;
 use Phpactor\LanguageServer\Core\Dispatcher\Factory\ClosureDispatcherFactory;
 use Phpactor\LanguageServer\Core\Rpc\Message;
@@ -25,6 +24,7 @@ use Phpactor\LanguageServer\Core\Server\Transmitter\LspMessageSerializer;
 use Phpactor\LanguageServer\Core\Server\Transmitter\MessageSerializer;
 use Phpactor\LanguageServer\Core\Server\Transmitter\TestMessageSerializer;
 use Psr\Log\NullLogger;
+use function Amp\async;
 use Revolt\EventLoop;
 use Exception;
 
@@ -103,7 +103,7 @@ class LanguageServerTest extends AsyncTestCase
 
 
         EventLoop::delay(0.01, function () use ($server): void {
-            AsyncCall::start(fn () => $server->shutdown());
+            async(fn () => $server->shutdown());
         });
 
         $server->start();

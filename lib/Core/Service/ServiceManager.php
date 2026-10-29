@@ -3,10 +3,10 @@
 namespace Phpactor\LanguageServer\Core\Service;
 
 use Amp\DeferredCancellation;
-use Phpactor\LanguageServer\Core\AsyncCall;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
+use function Amp\async;
 
 class ServiceManager
 {
@@ -59,7 +59,7 @@ class ServiceManager
         $this->cancellations[$serviceName] = $cancel;
         $token = $cancel->getCancellation();
 
-        AsyncCall::start(function () use ($provider, $serviceName, $token): void {
+        async(function () use ($provider, $serviceName, $token): void {
             try {
                 $provider->$serviceName($token);
             } catch (Throwable $error) {

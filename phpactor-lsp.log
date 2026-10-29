@@ -2,9 +2,7 @@
 
 {"level":"info","message":"i am a demonstration server and provide no functionality","context":[]}
 
-{"level":"info","message":"Listening on 127.0.0.1:9999","context":[]}
+{"level":"info","message":"Listening on 127.0.0.1:9998","context":[]}
 
-{"level":"info","message":"Accepted connection from \"127.0.0.1:63585\"","context":[]}
-
-{"level":"info","message":"Accepted connection from \"127.0.0.1:63613\"","context":[]}
+{"level":"info","message":"Accepted connection from \"127.0.0.1:63923\"","context":[]}
 

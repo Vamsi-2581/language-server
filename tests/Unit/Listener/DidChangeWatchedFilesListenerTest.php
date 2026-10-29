@@ -13,9 +13,10 @@ use Phpactor\LanguageServer\Core\Server\RpcClient\TestRpcClient;
 use Phpactor\LanguageServer\Core\Server\Transmitter\TestMessageTransmitter;
 use Phpactor\LanguageServer\Event\Initialized;
 use Phpactor\LanguageServer\Listener\DidChangeWatchedFilesListener;
-use Phpactor\TestUtils\PHPUnit\TestCase;
+use Amp\PHPUnit\AsyncTestCase;
+use function Amp\delay;
 
-class DidChangeWatchedFilesListenerTest extends TestCase
+class DidChangeWatchedFilesListenerTest extends AsyncTestCase
 {
     private DidChangeWatchedFilesListener $listener;
 
@@ -77,5 +78,8 @@ class DidChangeWatchedFilesListenerTest extends TestCase
         foreach ($this->listener->getListenersForEvent($event) as $listener) {
             $listener($event);
         };
+
+        // the registration request is sent from a fiber
+        delay(0);
     }
 }

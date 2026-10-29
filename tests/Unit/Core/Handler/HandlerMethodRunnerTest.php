@@ -5,7 +5,6 @@ namespace Phpactor\LanguageServer\Tests\Unit\Core\Handler;
 use Amp\Cancellation;
 use Amp\CancelledException;
 use Amp\PHPUnit\AsyncTestCase;
-use Phpactor\LanguageServer\Core\AsyncCall;
 use Phpactor\LanguageServer\Core\Handler\ClosureHandler;
 use Phpactor\LanguageServer\Core\Handler\HandlerMethodRunner;
 use Phpactor\LanguageServer\Core\Handler\Handlers;
@@ -13,6 +12,7 @@ use Phpactor\LanguageServer\Core\Rpc\NotificationMessage;
 use Phpactor\LanguageServer\Core\Rpc\RequestMessage;
 use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use RuntimeException;
+use function Amp\async;
 use function Amp\delay;
 
 class HandlerMethodRunnerTest extends AsyncTestCase
@@ -71,7 +71,7 @@ class HandlerMethodRunnerTest extends AsyncTestCase
             })
         ]);
 
-        AsyncCall::start(fn () => $dispatcher->dispatch(
+        async(fn () => $dispatcher->dispatch(
             new RequestMessage(1, 'foobar', ['bar' => 'foo'])
         ));
 
@@ -92,10 +92,11 @@ class HandlerMethodRunnerTest extends AsyncTestCase
             })
         ]);
 
-        $response = AsyncCall::start(fn () => $dispatcher->dispatch(
+        $response = async(fn () => $dispatcher->dispatch(
             new RequestMessage(1, 'foobar', ['bar' => 'foo'])
         ));
 
+        delay(0);
         $dispatcher->cancelRequest(1);
 
         $response->await();

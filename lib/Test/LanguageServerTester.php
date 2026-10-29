@@ -17,8 +17,8 @@ use Phpactor\LanguageServer\Core\Server\Transmitter\TestMessageTransmitter;
 use Phpactor\LanguageServer\Test\LanguageServerTester\ServicesTester;
 use Phpactor\LanguageServer\Test\LanguageServerTester\TextDocumentTester;
 use Phpactor\LanguageServer\Test\LanguageServerTester\WorkspaceTester;
-use Phpactor\LanguageServer\Core\AsyncCall;
 use RuntimeException;
+use function Amp\async;
 
 final class LanguageServerTester
 {
@@ -38,7 +38,10 @@ final class LanguageServerTester
      */
     public function dispatch(Message $message): Future
     {
-        return AsyncCall::start(fn () => $this->dispatcher->dispatch($message));
+        /** @var Future<ResponseMessage|null> $future */
+        $future = async(fn (): ?ResponseMessage => $this->dispatcher->dispatch($message));
+
+        return $future;
     }
 
     public function dispatchAndWait(Message $message): ?ResponseMessage

@@ -10,7 +10,7 @@ use Amp\DeferredFuture;
 use Phpactor\LanguageServerProtocol\TextDocumentItem;
 use Psr\Log\LoggerInterface;
 use Throwable;
-use Phpactor\LanguageServer\Core\AsyncCall;
+use function Amp\async;
 use function Amp\delay;
 use Exception;
 
@@ -100,7 +100,7 @@ class DiagnosticsEngine
                     continue;
                 }
 
-                AsyncCall::start(function () use ($providerId, $provider, $token, $textDocument, &$crashedProviders): void {
+                async(function () use ($providerId, $provider, $token, $textDocument, &$crashedProviders): void {
                     $start = microtime(true);
 
                     $this->awaitProviderLock($providerId);

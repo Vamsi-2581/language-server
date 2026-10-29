@@ -32,6 +32,8 @@ class ServiceManagerTest extends AsyncTestCase
         $serviceManager = $this->createServiceManager($service);
         $serviceManager->startAll();
 
+        delay(0);
+
         self::assertTrue($service->called);
     }
 
@@ -40,6 +42,8 @@ class ServiceManagerTest extends AsyncTestCase
         $service = new PingService();
         $serviceManager = $this->createServiceManager($service);
         $serviceManager->startAll();
+
+        delay(0);
 
         self::assertFalse($service->cancellationToken->isRequested());
 
@@ -55,6 +59,8 @@ class ServiceManagerTest extends AsyncTestCase
         self::assertFalse($service->called);
         $serviceManager->start('ping');
         self::assertTrue($serviceManager->isRunning('ping'));
+
+        delay(0);
 
         self::assertTrue($service->called);
     }
@@ -84,6 +90,9 @@ class ServiceManagerTest extends AsyncTestCase
         $service = new ExceptionThrowingService();
         $serviceManager = $this->createServiceManager($service);
         $serviceManager->start('exception');
+
+        delay(0);
+
         self::assertTrue($this->logger->hasErrorThatContains('No'));
     }
 

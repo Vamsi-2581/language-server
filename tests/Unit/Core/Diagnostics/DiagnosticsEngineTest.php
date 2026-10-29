@@ -5,13 +5,13 @@ namespace Phpactor\LanguageServer\Tests\Unit\Core\Diagnostics;
 use Amp\DeferredCancellation;
 use Amp\PHPUnit\AsyncTestCase;
 use Phpactor\LanguageServerProtocol\TextDocumentItem;
-use Phpactor\LanguageServer\Core\AsyncCall;
 use Phpactor\LanguageServer\Core\Diagnostics\ClosureDiagnosticsProvider;
 use Phpactor\LanguageServer\Core\Diagnostics\DiagnosticsEngine;
 use Phpactor\LanguageServer\Core\Rpc\NotificationMessage;
 use Phpactor\LanguageServer\LanguageServerTesterBuilder;
 use Phpactor\LanguageServer\Test\ProtocolFactory;
 use Psr\Log\NullLogger;
+use function Amp\async;
 use function Amp\delay;
 use Exception;
 
@@ -23,7 +23,7 @@ class DiagnosticsEngineTest extends AsyncTestCase
         $engine = $this->createEngine($tester, 0, 0);
 
         $token = new DeferredCancellation();
-        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
+        async(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(
             ProtocolFactory::textDocumentItem('file:///foobar', 'foobar')
@@ -51,7 +51,7 @@ class DiagnosticsEngineTest extends AsyncTestCase
         $engine = $this->createEngine($tester, 0, 0);
 
         $token = new DeferredCancellation();
-        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
+        async(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'foobar'));
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///barfoo', 'foobar'));
@@ -71,7 +71,7 @@ class DiagnosticsEngineTest extends AsyncTestCase
         $engine = $this->createEngine($tester, 1, 0);
 
         $token = new DeferredCancellation();
-        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
+        async(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'foobar'));
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'foobar'));
@@ -91,7 +91,7 @@ class DiagnosticsEngineTest extends AsyncTestCase
         $engine = $this->createEngine($tester, 5, 10);
 
         $token = new DeferredCancellation();
-        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
+        async(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'bazboo'));
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///barfoo', 'foobar'));
@@ -121,7 +121,7 @@ class DiagnosticsEngineTest extends AsyncTestCase
         ], 10);
 
         $token = new DeferredCancellation();
-        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
+        async(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'bazboo'));
 
@@ -141,7 +141,7 @@ class DiagnosticsEngineTest extends AsyncTestCase
         ], 10);
 
         $token = new DeferredCancellation();
-        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
+        async(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'bazboo'));
 
@@ -171,7 +171,7 @@ class DiagnosticsEngineTest extends AsyncTestCase
         $engine = $this->createEngine($tester, 5, 0, $lastDocument);
 
         $token = new DeferredCancellation();
-        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
+        async(fn () => $engine->run($token->getCancellation()));
         delay(0.001);
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', '1', version: 1));

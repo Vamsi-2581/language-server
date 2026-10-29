@@ -19,8 +19,6 @@ use Phpactor\LanguageServer\Core\Server\StreamProvider\StreamProvider;
 use Phpactor\LanguageServer\Core\Rpc\RequestMessageFactory;
 use Psr\Log\LoggerInterface;
 use Phpactor\LanguageServer\Core\Dispatcher\Dispatcher;
-use Phpactor\LanguageServer\Core\AsyncCall;
-use Amp\Future\UnhandledFutureError;
 use Revolt\EventLoop;
 use RuntimeException;
 use Throwable;
@@ -67,12 +65,6 @@ final class LanguageServer
         }
 
         EventLoop::setErrorHandler(function (Throwable $error): void {
-            // Amp 3 wraps the error of a future that is destroyed without
-            // being awaited, where Amp 2 forwarded the original exception.
-            if ($error instanceof UnhandledFutureError) {
-                $error = $error->getPrevious() ?? $error;
-            }
-
             if ($error instanceof ShutdownServer) {
                 EventLoop::getDriver()->stop();
                 return;
@@ -82,8 +74,10 @@ final class LanguageServer
             throw $error;
         });
 
-        async(fn () => $this->start());
+        $this->start();
 
+        // With a STDIO connection start() returns as soon as the single
+        // connection has been accepted, so the loop is needed to serve it.
         EventLoop::run();
     }
 
@@ -140,7 +134,7 @@ final class LanguageServer
             // terminate it if necessary
             $this->connections[$connection->id()] = $connection;
 
-            AsyncCall::start(function () use ($connection): void {
+            async(function () use ($connection): void {
                 $this->handle($connection);
                 $this->stats->decConnectionCount();
             });
@@ -184,25 +178,30 @@ final class LanguageServer
 
     private function dispatchRequest(MessageTransmitter $transmitter, Dispatcher $dispatcher, Connection $connection, Message $request): void
     {
-        AsyncCall::start(function () use ($transmitter, $request, $dispatcher, $connection): void {
+        async(function () use ($transmitter, $request, $dispatcher, $connection): void {
             try {
-                $response = $dispatcher->dispatch($request);
-            } catch (ExitSession $e) {
-                $connection->stream()->end();
+                try {
+                    $response = $dispatcher->dispatch($request);
+                } catch (ExitSession $e) {
+                    $connection->stream()->end();
 
-                if ($this->streamProvider instanceof ResourceStreamProvider) {
-                    throw new ShutdownServer(
-                        'Exit called on STDIO connection, exiting the server'
-                    );
+                    if ($this->streamProvider instanceof ResourceStreamProvider) {
+                        throw new ShutdownServer(
+                            'Exit called on STDIO connection, exiting the server'
+                        );
+                    }
+                    return;
                 }
-                return;
-            }
 
-            if (null === $response) {
-                return;
-            }
+                if (null === $response) {
+                    return;
+                }
 
-            $transmitter->transmit($response);
+                $transmitter->transmit($response);
+            } catch (ShutdownServer $error) {
+                $this->logger->info($error->getMessage());
+                EventLoop::getDriver()->stop();
+            }
         });
     }
 }

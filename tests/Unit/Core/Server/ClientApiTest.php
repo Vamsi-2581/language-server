@@ -13,8 +13,9 @@ use Phpactor\LanguageServerProtocol\MessageType;
 use Phpactor\LanguageServerProtocol\Registration;
 use Phpactor\LanguageServerProtocol\Unregistration;
 use Phpactor\LanguageServerProtocol\WorkspaceEdit;
-use Phpactor\LanguageServer\Core\AsyncCall;
 use Phpactor\LanguageServer\Core\Server\ClientApi;
+use function Amp\async;
+use function Amp\delay;
 use Phpactor\LanguageServer\Core\Server\RpcClient\TestRpcClient;
 use Phpactor\LanguageServer\WorkDoneProgress\WorkDoneToken;
 
@@ -112,7 +113,10 @@ class ClientApiTest extends AsyncTestCase
     {
         yield [
             function (ClientApi $api) {
-                return AsyncCall::start(fn () => $api->window()->showMessageRequest()->info('foobar', new MessageActionItem('foobar')));
+                $future = async(fn () => $api->window()->showMessageRequest()->info('foobar', new MessageActionItem('foobar')));
+                delay(0);
+
+                return $future;
             },
             function (TestRpcClient $client, $result): void {
                 $client->responseWatcher()->resolveLastResponse(['title' => 'foobar']);
@@ -135,7 +139,10 @@ class ClientApiTest extends AsyncTestCase
     {
         yield [
             function (ClientApi $api) {
-                return AsyncCall::start(fn () => $api->workspace()->applyEdit(new WorkspaceEdit([])));
+                $future = async(fn () => $api->workspace()->applyEdit(new WorkspaceEdit([])));
+                delay(0);
+
+                return $future;
             },
             function (TestRpcClient $client, $result): void {
                 $client->responseWatcher()->resolveLastResponse([
@@ -160,7 +167,10 @@ class ClientApiTest extends AsyncTestCase
     {
         yield [
             function (ClientApi $api) {
-                return AsyncCall::start(fn () => $api->workspace()->executeCommand('one', ['one', 'two']));
+                $future = async(fn () => $api->workspace()->executeCommand('one', ['one', 'two']));
+                delay(0);
+
+                return $future;
             },
             function (TestRpcClient $client, $result): void {
                 $client->responseWatcher()->resolveLastResponse('result');
@@ -201,11 +211,12 @@ class ClientApiTest extends AsyncTestCase
     {
         yield [
             function (ClientApi $api): void {
-                AsyncCall::start(fn () => $api->client()->registerCapability(
+                async(fn () => $api->client()->registerCapability(
                     new Registration('foobar', 'workspace/didChangeWatchedFiles', new DidChangeWatchedFilesRegistrationOptions([
                         new FileSystemWatcher('**/*.php')
                     ]))
                 ));
+                delay(0);
             },
             function (TestRpcClient $client, $result): void {
                 $message = $client->transmitter()->shiftRequest();
@@ -215,9 +226,10 @@ class ClientApiTest extends AsyncTestCase
 
         yield [
             function (ClientApi $api): void {
-                AsyncCall::start(fn () => $api->client()->unregisterCapability(
+                async(fn () => $api->client()->unregisterCapability(
                     new Unregistration('10', 'foo')
                 ));
+                delay(0);
             },
             function (TestRpcClient $client, $result): void {
                 $message = $client->transmitter()->shiftRequest();
@@ -234,7 +246,8 @@ class ClientApiTest extends AsyncTestCase
         yield 'Creating Work Done Progress' => [
             function (ClientApi $api): void {
                 $token = new WorkDoneToken('4ef439b3-3c6a-4c98-ae0a-af2b4503cb15');
-                AsyncCall::start(fn () => $api->workDoneProgress()->create($token));
+                async(fn () => $api->workDoneProgress()->create($token));
+                delay(0);
             },
             function (TestRpcClient $client): void {
                 $message = $client->transmitter()->shiftRequest();
