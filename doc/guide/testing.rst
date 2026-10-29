@@ -60,6 +60,19 @@ injection container, you can use the ``tester`` method to get the
 
 This will provide the :ref:`LanguageServerTester` with the "real" dispatcher.
 
+The ``*AndWait`` variants block until the request is complete. The non-blocking
+variants (``request()``, ``notify()``, ``dispatch()``) return an ``Amp\Future``
+which you can ``await()`` yourself, which is useful when you need to interleave
+something (for example cancelling a request) before waiting for the result:
+
+.. code-block:: php
+
+    <?php
+
+    $future = $tester->request('soMyThing', [], id: 1);
+    $tester->cancel(1);
+    $future->await();
+
 .. _LanguageServerTester:
 
 Language Server Tester

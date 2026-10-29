@@ -28,12 +28,12 @@ respond to any request with a response "Hello world!":
   you'd normally do). The ``Message`` is the incoming message
   (``Request``, ``Notification`` or ``Response``) from the client, the
   ``RequestHandler`` is used to delegate to the *next* ``Middleware``.
-- We return a ``ResponseMessage`` wrapped in a ``Promise``. We only return a
-  ``Response`` for ``Request`` messages, and the ``Response`` must reference
-  the request's ID.
-- The ``Success`` class is a ``Promise`` which resolves immediately. Returning
-  a ``Promise`` allows us to run non-blocking
-  co-routines_.
+- We return a ``ResponseMessage``. We only return a ``Response`` for
+  ``Request`` messages, and the ``Response`` must reference the request's ID.
+- Returning ``null`` means no response is sent, which is what notifications
+  expect.
+- Your handler runs inside a fiber, so it may block on I/O without blocking the
+  server: other requests continue to be served while it is suspended.
 - Then finally build and run the server. It will listen on STDIO by default.
   
 
@@ -64,5 +64,3 @@ wouldn't do very much.
 
 In the next chapter we'll try and introduce some more
 concepts and add some language server functionality.
-
-.. _co-routines: https://amphp.org/amp/coroutines/

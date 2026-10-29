@@ -27,11 +27,11 @@ It accepts:
 
     $server->run();
     // or
-    $promise = $server->start();
+    $server->start();
 
 Run or Start
 ------------
 
 The `run` method on the built language server will start the server and listen for connections. It will also register an error and signal handler.
 
-The `start` method will simply return a promise, without doing anything extra.
+The `start` method will simply start the server and block until it stops, without registering any handlers. You will usually want to call it from inside a fiber.

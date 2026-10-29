@@ -9,8 +9,8 @@ They look like this:
 
     <?php
 
+    use Amp\Cancellation;
     use Phpactor\LanguageServer\Core\Handler\Handler;
-    use Amp\Promise;
 
     class MyHandler implements Handler
     {
@@ -21,9 +21,9 @@ They look like this:
             ];
         }
 
-        public function doSomething($args, CancellationToken $canellation): Promise
+        public function doSomething($args, ?Cancellation $cancellation = null): string
         {
-            return new Success('hello!');
+            return 'hello!';
         }
     }
 
@@ -70,7 +70,7 @@ automatically instantaite it for you:
             ];
         }
 
-        public function doSomething(CompletionParams $completionParams, CancellationToken $canellation): Promise
+        public function doSomething(CompletionParams $completionParams, ?Cancellation $cancellation = null): CompletionList
         {
             $uriToTextDocument = $completionParams->textDocument->uri;
             // ...
@@ -91,75 +91,94 @@ PassThroughArgumentResolver
 
 This is a fallback resolver which will simply pass the raw array of arguments.
 
-Co-routines
------------
+Blocking
+--------
 
-Your method MUST return an ``Amp\Promise``. If you return immediately you can
-use the ``new Success($value)`` promise, if you do any *interruptable** work
-which takes a significant amount of time you should use a co-routing. For
-example:
+Your method is called inside a fiber, so it may block: the server will suspend
+this request and continue serving others. Anything that waits on I/O (including
+``Amp\delay()``) suspends only the current request.
 
 .. code-block:: php
     
     <?php
 
+    use function Amp\delay;
+
     class MyHandler implements Handler
     {
         //...
 
-        public function doSomething(CompletionParams $params, CancellationToken $canellation): Promise
+        public function doSomething(CompletionParams $params, ?Cancellation $cancellation = null): array
         {
-            return \Amp\call(function () {
-                // ...
-                $completionItems = [];
+            // ...
+            $completionItems = [];
 
-                foreach($this->magicCompletionProvider->provideCompletions($params) as $completion) {
-                    $completionItems[] = $completion;
-                    yield Amp\delay(1);
-                }
+            foreach($this->magicCompletionProvider->provideCompletions($params) as $completion) {
+                $completionItems[] = $completion;
+                delay(0.001);
+            }
 
-                return $completionItems;
-            });
-
+            return $completionItems;
         }
     }
 
-The above will process a single completion item but then yield control back to
-the server for 1 millisecond before continuing. This allows the server to do
-other things (like for example **cancel this request**).
+The above will process a single completion item but then suspend for 1
+millisecond before continuing. This allows the server to do other things (like
+for example **cancel this request**).
+
+If you want to run several things concurrently you can start them with
+``Amp\async()`` and wait for the results with ``Amp\Future\await()``:
+
+.. code-block:: php
+
+    <?php
+
+    use function Amp\async;
+    use function Amp\Future\await;
+
+    $futures = [];
+
+    foreach ($providers as $provider) {
+        $futures[] = async(fn () => $provider->provide($params));
+    }
+
+    [$errors, $results] = await($futures);
 
 Cancellation
 ------------
 
-The ``CancellationToken`` passed to the method handler can throw an exception
+The ``Cancellation`` passed to the method handler can throw an exception
 if the request is cancelled as follows:
 
 .. code-block:: php
     
     <?php
 
+    use Amp\Cancellation;
+    use Amp\CancelledException;
+    use function Amp\delay;
+
     class MyHandler implements Handler
     {
         //...
 
-        public function doSomething(CompletionParams $params, CancellationToken $canellation): Promise
+        public function doSomething(CompletionParams $params, ?Cancellation $cancellation = null): array
         {
-            return \Amp\call(function () {
-                // ...
-                $completionItems = [];
+            // ...
+            $completionItems = [];
 
-                foreach($this->magicCompletionProvider->provideCompletions($params) as $completion) {
-                    $completionItems[] = $completion;
-                    yield Amp\delay(1);
-                    try {
-                        $cancellation->throwIfRequested();
-                    } catch (Amp\CancelledException $cancelled) {
-                        break;
-                    }
+            foreach($this->magicCompletionProvider->provideCompletions($params) as $completion) {
+                $completionItems[] = $completion;
+                delay(0.001);
+
+                try {
+                    $cancellation?->throwIfRequested();
+                } catch (CancelledException $cancelled) {
+                    break;
                 }
+            }
 
-                return $completionItems;
-            });
+            return $completionItems;
         }
     }
 

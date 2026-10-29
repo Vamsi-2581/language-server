@@ -1,6 +1,24 @@
 CHANGELOG
 =========
 
+9.0
+---
+
+- Migrated from amphp/amp 2 to amphp/amp 3 (fibers instead of generators).
+- Breaking: handlers, middleware, dispatchers and method runners return values
+  instead of `Amp\Promise`, and no longer need `Amp\call()`.
+- Breaking: `Amp\CancellationToken` parameters became optional
+  `?Amp\Cancellation $cancellation = null`.
+- Breaking: `DiagnosticsProvider`, `CodeActionProvider`, `Formatter`,
+  `ServiceProvider`, `RpcClient`, `ProgressNotifier` and `StreamProvider` have
+  synchronous signatures.
+- Breaking: `RequestReader::wait()` became `readMessage()`.
+- Breaking: `LanguageServer::start()` and `shutdown()` block instead of
+  returning a promise.
+- Breaking: `Amp\Delayed` milliseconds became `Amp\delay()` seconds.
+- Breaking: `RpcClient::request()` blocks until the response arrives, so it must
+  be called from within a fiber.
+
 8.0
 ---
 

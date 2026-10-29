@@ -16,7 +16,7 @@ map of command *names* to invokable objects:
     <?php
 
     use Phpactor\LanguageServer\Handler\Workspace\CommandHandler;
-    use Phpactor\LanguageServer\Workspace\CommandDispatcher;
+    use Phpactor\LanguageServer\Core\Command\CommandDispatcher;
 
     // ...
     $handler = new CommandHandler(

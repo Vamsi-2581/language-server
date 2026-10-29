@@ -22,7 +22,9 @@ This is similar to :doc:`method handlers <handlers>` with the exception that:
   doubles as both the method and service name.
 - The method is called when the Language Server is initialized (or when it is
   started via. the service manager).
-- Services are passed only a ``CancellationToken``.
+- Services are passed only an optional ``Amp\Cancellation``. The method runs in
+  its own fiber and should block for as long as the service is meant to run;
+  the server stops it by cancelling the token.
 
 Usage
 -----
