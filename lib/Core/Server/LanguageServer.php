@@ -20,6 +20,7 @@ use Phpactor\LanguageServer\Core\Rpc\RequestMessageFactory;
 use Psr\Log\LoggerInterface;
 use Phpactor\LanguageServer\Core\Dispatcher\Dispatcher;
 use Phpactor\LanguageServer\Core\AsyncCall;
+use Amp\Future\UnhandledFutureError;
 use Revolt\EventLoop;
 use RuntimeException;
 use Throwable;
@@ -66,6 +67,12 @@ final class LanguageServer
         }
 
         EventLoop::setErrorHandler(function (Throwable $error): void {
+            // Amp 3 wraps the error of a future that is destroyed without
+            // being awaited, where Amp 2 forwarded the original exception.
+            if ($error instanceof UnhandledFutureError) {
+                $error = $error->getPrevious() ?? $error;
+            }
+
             if ($error instanceof ShutdownServer) {
                 EventLoop::getDriver()->stop();
                 return;
