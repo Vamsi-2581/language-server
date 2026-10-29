@@ -1,8 +1,12 @@
 {
-    "name": "phpactor/language-server",
+    "name": "balthild/language-server",
     "description": "Generic Language Server Platform",
     "license": "MIT",
     "authors": [
+        {
+            "name": "Balthild",
+            "email": "ibalthild@gmail.com"
+        },
         {
             "name": "Daniel Leech",
             "email": "daniel@dantleech.com"
