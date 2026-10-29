@@ -2,16 +2,13 @@
 
 namespace Phpactor\LanguageServer\Tests\Integration\Core\Server;
 
-use Amp\ByteStream\InMemoryStream;
-use Amp\ByteStream\IteratorStream;
-use Amp\ByteStream\OutputBuffer;
-use Amp\Loop;
+use Amp\ByteStream\ReadableBuffer;
+use Amp\ByteStream\ReadableIterableStream;
+use Amp\ByteStream\WritableBuffer;
 use Amp\PHPUnit\AsyncTestCase;
-use Amp\Promise;
-use Amp\Success;
 use Closure;
-use Generator;
 use PHPUnit\Framework\Assert;
+use Phpactor\LanguageServer\Core\AsyncCall;
 use Phpactor\LanguageServer\Core\Dispatcher\Dispatcher\ClosureDispatcher;
 use Phpactor\LanguageServer\Core\Dispatcher\Factory\ClosureDispatcherFactory;
 use Phpactor\LanguageServer\Core\Rpc\Message;
@@ -28,27 +25,26 @@ use Phpactor\LanguageServer\Core\Server\Transmitter\LspMessageSerializer;
 use Phpactor\LanguageServer\Core\Server\Transmitter\MessageSerializer;
 use Phpactor\LanguageServer\Core\Server\Transmitter\TestMessageSerializer;
 use Psr\Log\NullLogger;
-use function Amp\Iterator\fromIterable;
-use function Amp\call;
+use Revolt\EventLoop;
 use Exception;
 
 class LanguageServerTest extends AsyncTestCase
 {
     /**
-     * @return Generator<Promise<string>>
+     * @return void
      */
-    public function testDispatchesRequest(): Generator
+    public function testDispatchesRequest(): void
     {
-        $response = yield $this->dispatchRequest(
+        $response = $this->dispatchRequest(
             new RequestMessage(1, 'foobar', []),
             function (Message $message) {
                 if (!$message instanceof RequestMessage) {
                     throw new Exception('not a request');
                 }
                 Assert::assertEquals('foobar', $message->method);
-                return new Success(new ResponseMessage(1, [
+                return new ResponseMessage(1, [
                     'foo' => 'bar',
-                ]));
+                ]);
             }
         );
 
@@ -56,17 +52,17 @@ class LanguageServerTest extends AsyncTestCase
         Assert::assertEquals(['foo' => 'bar'], $response->body()['result']);
     }
     /**
-     * @return Generator<Promise<string>>
+     * @return void
      */
-    public function testHandlesMalformedRequest(): Generator
+    public function testHandlesMalformedRequest(): void
     {
         $serializer = new TestMessageSerializer('{"id":3,"foo":"bar"}');
-        $response = yield $this->dispatchRequest(
+        $response = $this->dispatchRequest(
             new RequestMessage(1, 'foobar', []),
             function (Message $message) {
-                return new Success(new ResponseMessage(1, [
+                return new ResponseMessage(1, [
                     'foo' => 'bar',
-                ]));
+                ]);
             },
             $serializer
         );
@@ -76,45 +72,47 @@ class LanguageServerTest extends AsyncTestCase
 
     }
     /**
-     * @return Promise<string>
-     * @param Closure(Message): Promise<ResponseMessage|null> $handler
+     * @param Closure(Message): ResponseMessage|null $handler
      */
     private function dispatchRequest(
         RequestMessage $request,
         Closure $handler,
         ?MessageSerializer $serializer = new LspMessageSerializer(),
-    ): Promise {
-        return call(function () use ($handler, $request, $serializer) {
-            $this->setTimeout(100);
+    ): ?RawMessage {
+        $this->setTimeout(1);
 
-            $formatter = new LspMessageFormatter($serializer);
-            $message = $formatter->format($request);
+        $formatter = new LspMessageFormatter($serializer);
+        $message = $formatter->format($request);
 
-            $output = new OutputBuffer();
-            $stream = new ResourceDuplexStream(
-                new IteratorStream(fromIterable([$message])),
-                $output
-            );
+        $output = new WritableBuffer();
+        $stream = new ResourceDuplexStream(
+            new ReadableIterableStream((function () use ($message) {
+                yield $message;
+            })()),
+            $output
+        );
 
-            $server = new LanguageServer(
-                new ClosureDispatcherFactory(function () use ($handler) {
-                    return new ClosureDispatcher($handler);
-                }),
-                new NullLogger(),
-                new ResourceStreamProvider($stream, new NullLogger()),
-                new PredefinedInitializer()
-            );
+        $server = new LanguageServer(
+            new ClosureDispatcherFactory(function () use ($handler) {
+                return new ClosureDispatcher($handler);
+            }),
+            new NullLogger(),
+            new ResourceStreamProvider($stream, new NullLogger()),
+            new PredefinedInitializer()
+        );
 
 
-            Loop::delay(10, function () use ($server) {
-                yield $server->shutdown();
-            });
-
-            yield $server->start();
-
-            $parser = new LspMessageReader(new InMemoryStream(yield $output));
-
-            return yield $parser->wait();
+        EventLoop::delay(0.01, function () use ($server): void {
+            AsyncCall::start(fn () => $server->shutdown());
         });
+
+        $server->start();
+
+        $parser = new LspMessageReader(new ResourceDuplexStream(
+            new ReadableBuffer($output->buffer()),
+            new WritableBuffer()
+        ));
+
+        return $parser->readMessage();
     }
 }

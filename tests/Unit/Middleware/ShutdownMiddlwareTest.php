@@ -3,7 +3,6 @@
 namespace Phpactor\LanguageServer\Tests\Unit\Middleware;
 
 use Amp\PHPUnit\AsyncTestCase;
-use Generator;
 use Phpactor\LanguageServer\Core\Middleware\RequestHandler;
 use Phpactor\LanguageServer\Core\Rpc\NotificationMessage;
 use Phpactor\LanguageServer\Core\Middleware\Exception\MiddlewareTerminated;
@@ -31,20 +30,20 @@ class ShutdownMiddlwareTest extends AsyncTestCase
         $this->eventDispatcher = $this->prophesize(EventDispatcherInterface::class);
     }
 
-    public function testDelegatesToNextHandlerIfMessageIsNotRequest(): Generator
+    public function testDelegatesToNextHandlerIfMessageIsNotRequest(): void
     {
         $this->expectException(MiddlewareTerminated::class);
         self::assertNull(
-            yield $this->createMiddleware()->process(
+            $this->createMiddleware()->process(
                 new NotificationMessage('foobar'),
                 new RequestHandler()
             )
         );
     }
 
-    public function testShutdownEmitsEvent(): Generator
+    public function testShutdownEmitsEvent(): void
     {
-        $response = yield $this->createMiddleware()->process(
+        $response = $this->createMiddleware()->process(
             new RequestMessage(1, ShutdownMiddleware::METHOD_SHUTDOWN, []),
             new RequestHandler()
         );
@@ -52,14 +51,14 @@ class ShutdownMiddlwareTest extends AsyncTestCase
         self::assertEquals(new ResponseMessage(1, null), $response);
     }
 
-    public function testShutdownTwiceReturnsError(): Generator
+    public function testShutdownTwiceReturnsError(): void
     {
         $middleware = $this->createMiddleware();
-        yield $middleware->process(
+        $middleware->process(
             new RequestMessage(1, ShutdownMiddleware::METHOD_SHUTDOWN, []),
             new RequestHandler()
         );
-        $response = yield $middleware->process(
+        $response = $middleware->process(
             new RequestMessage(1, ShutdownMiddleware::METHOD_SHUTDOWN, []),
             new RequestHandler()
         );

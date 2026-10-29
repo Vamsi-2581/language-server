@@ -2,9 +2,7 @@
 
 namespace Phpactor\LanguageServer\Tests\Unit\Diagnostics;
 
-use Amp\CancellationToken;
-use Amp\Delayed;
-use Amp\Promise;
+use Amp\Cancellation;
 use PHPUnit\Framework\TestCase;
 use Phpactor\LanguageServerProtocol\CodeAction;
 use Phpactor\LanguageServerProtocol\Range;
@@ -13,8 +11,7 @@ use Phpactor\LanguageServer\Core\CodeAction\CodeActionProvider;
 use Phpactor\LanguageServer\Diagnostics\CodeActionDiagnosticsProvider;
 use Phpactor\LanguageServer\LanguageServerTesterBuilder;
 use Phpactor\LanguageServer\Test\ProtocolFactory;
-use function Amp\Promise\wait;
-use function Amp\call;
+use function Amp\delay;
 
 class CodeActionDiagnosticsProviderTest extends TestCase
 {
@@ -30,12 +27,12 @@ class CodeActionDiagnosticsProviderTest extends TestCase
 
         $tester->textDocument()->open('file:///foobar', 'barfoo');
 
-        wait(new Delayed(10));
+        delay(0.01);
 
         self::assertEquals(2, $tester->transmitter()->count());
 
         $tester->textDocument()->update('file:///foobar', 'bar');
-        wait(new Delayed(10));
+        delay(0.01);
 
         self::assertEquals(5, $tester->transmitter()->count());
         self::assertEquals('textDocument/publishDiagnostics', $tester->transmitter()->shiftNotification()->method);
@@ -44,21 +41,19 @@ class CodeActionDiagnosticsProviderTest extends TestCase
 
 class TestCodeActionProvider implements CodeActionProvider
 {
-    public function provideActionsFor(TextDocumentItem $textDocument, Range $range, CancellationToken $cancel): Promise
+    public function provideActionsFor(TextDocumentItem $textDocument, Range $range, ?Cancellation $cancel = null): array
     {
-        return call(function () {
-            return [
-                CodeAction::fromArray([
-                    'title' => 'Bar',
-                    'diagnostics' => [
-                        ProtocolFactory::diagnostic(
-                            ProtocolFactory::range(0, 0, 0, 0),
-                            'Foobar'
-                        ),
-                    ]
-                ])
-            ];
-        });
+        return [
+            CodeAction::fromArray([
+                'title' => 'Bar',
+                'diagnostics' => [
+                    ProtocolFactory::diagnostic(
+                        ProtocolFactory::range(0, 0, 0, 0),
+                        'Foobar'
+                    ),
+                ]
+            ])
+        ];
     }
 
     /**

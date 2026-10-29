@@ -2,15 +2,13 @@
 
 namespace Phpactor\LanguageServer\Tests\Unit\Core\CodeAction;
 
-use Amp\CancellationTokenSource;
-use Amp\Success;
+use Amp\DeferredCancellation;
 use PHPUnit\Framework\TestCase;
 use Phpactor\LanguageServerProtocol\CodeAction;
 use Phpactor\LanguageServer\Core\CodeAction\AggregateCodeActionProvider;
 use Phpactor\LanguageServer\Core\CodeAction\CodeActionProvider;
 use Phpactor\LanguageServer\Test\ProtocolFactory;
 use Prophecy\PhpUnit\ProphecyTrait;
-use function Amp\Promise\wait;
 
 class AggregateCodeActionProviderTest extends TestCase
 {
@@ -40,15 +38,15 @@ class AggregateCodeActionProviderTest extends TestCase
         $provider1 = $this->prophesize(CodeActionProvider::class);
         $provider2 = $this->prophesize(CodeActionProvider::class);
 
-        $source = new CancellationTokenSource();
-        $token = $source->getToken();
-        $provider1->provideActionsFor($item, $range, $token)->willReturn(new Success([$action1]));
-        $provider2->provideActionsFor($item, $range, $token)->willReturn(new Success([$action2]));
+        $source = new DeferredCancellation();
+        $token = $source->getCancellation();
+        $provider1->provideActionsFor($item, $range, $token)->willReturn([$action1]);
+        $provider2->provideActionsFor($item, $range, $token)->willReturn([$action2]);
 
         $aggregate = new AggregateCodeActionProvider($provider1->reveal(), $provider2->reveal());
 
         $actions = [];
-        foreach (wait($aggregate->provideActionsFor($item, $range, $token)) as $action) {
+        foreach ($aggregate->provideActionsFor($item, $range, $token) as $action) {
             $actions[] = $action;
         }
 

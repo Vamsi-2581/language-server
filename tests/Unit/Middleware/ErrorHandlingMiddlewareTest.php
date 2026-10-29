@@ -3,8 +3,6 @@
 namespace Phpactor\LanguageServer\Tests\Unit\Middleware;
 
 use Amp\PHPUnit\AsyncTestCase;
-use Amp\Success;
-use Generator;
 use Phpactor\LanguageServer\Core\Handler\HandlerNotFound;
 use Phpactor\LanguageServer\Core\Middleware\RequestHandler;
 use Phpactor\LanguageServer\Core\Rpc\ErrorCodes;
@@ -28,13 +26,13 @@ class ErrorHandlingMiddlewareTest extends AsyncTestCase
         $this->logger = new TestLogger();
     }
 
-    public function testDelegatesToNextHandlerIfMessageIsNotRequest(): Generator
+    public function testDelegatesToNextHandlerIfMessageIsNotRequest(): void
     {
-        $response = yield $this->createMiddleware()->process(
+        $response = $this->createMiddleware()->process(
             new NotificationMessage('foobar'),
             new RequestHandler([
                 new ClosureMiddleware(function () {
-                    return new Success(new ResponseMessage(1, null));
+                    return new ResponseMessage(1, null);
                 })
             ])
         );
@@ -44,11 +42,11 @@ class ErrorHandlingMiddlewareTest extends AsyncTestCase
         self::assertEquals([], $this->logger->records);
     }
 
-    public function testRethrowsServerControlException(): Generator
+    public function testRethrowsServerControlException(): void
     {
         $this->expectException(ExitSession::class);
 
-        yield $this->createMiddleware()->process(
+        $this->createMiddleware()->process(
             new NotificationMessage('foobar'),
             new RequestHandler([
                 new ClosureMiddleware(function (): void {
@@ -58,9 +56,9 @@ class ErrorHandlingMiddlewareTest extends AsyncTestCase
         );
     }
 
-    public function testLogsAndReturnsNullForNoticationException(): Generator
+    public function testLogsAndReturnsNullForNoticationException(): void
     {
-        $response = yield $this->createMiddleware()->process(
+        $response = $this->createMiddleware()->process(
             new NotificationMessage('foobar'),
             new RequestHandler([
                 new ClosureMiddleware(function (): void {
@@ -73,9 +71,9 @@ class ErrorHandlingMiddlewareTest extends AsyncTestCase
         self::assertTrue($this->logger->hasErrorThatContains('please'));
     }
 
-    public function testDoesNotLogButReturnsErrorResponseForRequest(): Generator
+    public function testDoesNotLogButReturnsErrorResponseForRequest(): void
     {
-        $response = yield $this->createMiddleware()->process(
+        $response = $this->createMiddleware()->process(
             new RequestMessage(1, 'foobar', []),
             new RequestHandler([
                 new ClosureMiddleware(function (): void {
@@ -91,9 +89,9 @@ class ErrorHandlingMiddlewareTest extends AsyncTestCase
         self::assertEquals(ErrorCodes::InternalError, $response->error->code);
     }
 
-    public function testMethodNotFoundCodeForHandlerNotFound(): Generator
+    public function testMethodNotFoundCodeForHandlerNotFound(): void
     {
-        $response = yield $this->createMiddleware()->process(
+        $response = $this->createMiddleware()->process(
             new RequestMessage(1, 'foobar', []),
             new RequestHandler([
                 new ClosureMiddleware(function (): void {

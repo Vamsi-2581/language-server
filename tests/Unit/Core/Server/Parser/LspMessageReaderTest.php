@@ -2,10 +2,12 @@
 
 namespace Phpactor\LanguageServer\Tests\Unit\Core\Server\Parser;
 
-use Amp\ByteStream\InMemoryStream;
+use Amp\ByteStream\ReadableBuffer;
+use Amp\ByteStream\WritableBuffer;
 use Phpactor\LanguageServer\Core\Server\Parser\Exception\CouldNotDecodeBody;
 use Phpactor\TestUtils\PHPUnit\TestCase;
 use Phpactor\LanguageServer\Core\Server\Parser\LspMessageReader;
+use Phpactor\LanguageServer\Core\Server\Stream\ResourceDuplexStream;
 use Phpactor\LanguageServer\Core\Rpc\RawMessage;
 
 class LspMessageReaderTest extends TestCase
@@ -16,7 +18,7 @@ class LspMessageReaderTest extends TestCase
 
     public function testYieldsRequest(): void
     {
-        $stream = new InMemoryStream(
+        $stream = new ResourceDuplexStream(new ReadableBuffer(
             <<<EOT
                 Content-Length: 74\r\n
                 Content-Type: foo\r\n\r\n
@@ -27,16 +29,16 @@ class LspMessageReaderTest extends TestCase
                    "params": {}
                 }
                 EOT
-        );
+        ), new WritableBuffer());
 
         $reader = new LspMessageReader($stream);
-        $result = \Amp\Promise\wait($reader->wait());
+        $result = $reader->readMessage();
         $this->assertInstanceOf(RawMessage::class, $result);
     }
 
     public function testSkipsInvalidHeader(): void
     {
-        $stream = new InMemoryStream(
+        $stream = new ResourceDuplexStream(new ReadableBuffer(
             <<<EOT
                 Content-Length:74\r\n
                 Content-Typefoo\r\n\r\n
@@ -47,16 +49,16 @@ class LspMessageReaderTest extends TestCase
                    "params": {}
                 }
                 EOT
-        );
+        ), new WritableBuffer());
 
         $reader = new LspMessageReader($stream);
-        $result = \Amp\Promise\wait($reader->wait());
+        $result = $reader->readMessage();
         $this->assertInstanceOf(RawMessage::class, $result);
     }
 
     public function testReadsMultipleRequests(): void
     {
-        $stream = new InMemoryStream(
+        $stream = new ResourceDuplexStream(new ReadableBuffer(
             <<<EOT
                 Content-Length: 74\r\n
                 Content-Type: foo\r\n\r\n
@@ -74,17 +76,17 @@ class LspMessageReaderTest extends TestCase
                    "params": {}
                 }
                 EOT
-        );
+        ), new WritableBuffer());
         $reader = new LspMessageReader($stream);
-        $result = \Amp\Promise\wait($reader->wait());
+        $result = $reader->readMessage();
         $this->assertInstanceOf(RawMessage::class, $result, 'first');
-        $result = \Amp\Promise\wait($reader->wait());
+        $result = $reader->readMessage();
         $this->assertInstanceOf(RawMessage::class, $result, 'second');
     }
 
     public function testReadingAnInvalidStream(): void
     {
-        $stream = new InMemoryStream(
+        $stream = new ResourceDuplexStream(new ReadableBuffer(
             <<<EOT
                 Content-Length: 74\r\n
                 Content-Type: foo\r\n\r\n
@@ -95,10 +97,10 @@ class LspMessageReaderTest extends TestCase
                         "textDocument": {
                         }
                 EOT
-        );
+        ), new WritableBuffer());
         $this->expectException(CouldNotDecodeBody::class);
 
         $reader = new LspMessageReader($stream);
-        $result = \Amp\Promise\wait($reader->wait());
+        $result = $reader->readMessage();
     }
 }

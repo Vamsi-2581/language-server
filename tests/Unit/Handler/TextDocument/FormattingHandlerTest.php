@@ -2,8 +2,6 @@
 
 namespace Phpactor\LanguageServer\Tests\Unit\Handler\TextDocument;
 
-use Amp\Promise;
-use Amp\Success;
 use PHPUnit\Framework\TestCase;
 use Phpactor\LanguageServerProtocol\DocumentFormattingParams;
 use Phpactor\LanguageServerProtocol\DocumentFormattingRequest;
@@ -49,8 +47,8 @@ class TestFormatter implements Formatter
         $this->textEdit = $textEdit;
     }
 
-    public function format(TextDocumentItem $textDocument): Promise
+    public function format(TextDocumentItem $textDocument): ?array
     {
-        return new Success([$this->textEdit]);
+        return [$this->textEdit];
     }
 }

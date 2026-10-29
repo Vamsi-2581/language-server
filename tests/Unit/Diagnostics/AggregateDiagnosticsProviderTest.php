@@ -2,15 +2,13 @@
 
 namespace Phpactor\LanguageServer\Tests\Unit\Diagnostics;
 
-use Amp\CancellationTokenSource;
-use Amp\Success;
+use Amp\DeferredCancellation;
 use PHPUnit\Framework\TestCase;
 use Phpactor\LanguageServerProtocol\Diagnostic;
 use Phpactor\LanguageServer\Core\Diagnostics\AggregateDiagnosticsProvider;
 use Phpactor\LanguageServer\Core\Diagnostics\ClosureDiagnosticsProvider;
 use Phpactor\LanguageServer\Test\ProtocolFactory;
 use Psr\Log\NullLogger;
-use function Amp\Promise\wait;
 
 class AggregateDiagnosticsProviderTest extends TestCase
 {
@@ -36,8 +34,9 @@ class AggregateDiagnosticsProviderTest extends TestCase
         ];
 
         $aggregate = $this->createAggregate(...$providers);
-        $cancel = (new CancellationTokenSource())->getToken();
-        $diagnostics = wait($aggregate->provideDiagnostics(ProtocolFactory::textDocumentItem('file:///', 'text'), $cancel));
+        $cancellation = new DeferredCancellation();
+        $cancel = $cancellation->getCancellation();
+        $diagnostics = $aggregate->provideDiagnostics(ProtocolFactory::textDocumentItem('file:///', 'text'), $cancel);
         self::assertCount(3, $diagnostics);
     }
 
@@ -61,7 +60,7 @@ class AggregateDiagnosticsProviderTest extends TestCase
     private function createProvider(array $diagnostics, string $name = 'test'): ClosureDiagnosticsProvider
     {
         return new ClosureDiagnosticsProvider(function () use ($diagnostics) {
-            return new Success($diagnostics);
+            return $diagnostics;
         }, $name);
     }
 }

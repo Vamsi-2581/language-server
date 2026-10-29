@@ -3,6 +3,7 @@
 namespace Phpactor\LanguageServer\Tests\Unit\Core\Server\RpcClient;
 
 use PHPUnit\Framework\TestCase;
+use Phpactor\LanguageServer\Core\AsyncCall;
 use Phpactor\LanguageServer\Core\Server\ResponseWatcher\TestResponseWatcher;
 use Phpactor\LanguageServer\Core\Server\RpcClient\JsonRpcClient;
 use Phpactor\LanguageServer\Core\Server\Transmitter\TestMessageTransmitter;
@@ -15,7 +16,9 @@ class JsonRpcClientTest extends TestCase
         $transmitter = new TestMessageTransmitter();
         $client = new JsonRpcClient($transmitter, $watcher);
 
-        $client->request('foobar', []);
+        // request() waits for the response, so it has to run in a fiber: the
+        // request is transmitted before it suspends.
+        AsyncCall::start(fn () => $client->request('foobar', []));
 
         // request is serializable
         $request = $transmitter->shiftRequest();

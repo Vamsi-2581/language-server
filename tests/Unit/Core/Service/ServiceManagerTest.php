@@ -2,20 +2,17 @@
 
 namespace Phpactor\LanguageServer\Tests\Unit\Core\Service;
 
-use Amp\CancellationToken;
+use Amp\Cancellation;
 use Amp\CancelledException;
-use Amp\Delayed;
 use Amp\PHPUnit\AsyncTestCase;
-use Amp\Promise;
-use Amp\Success;
 use Exception;
-use Generator;
 use Phpactor\LanguageServer\Core\Service\ServiceProvider;
 use Phpactor\LanguageServer\Core\Service\ServiceManager;
 use Phpactor\LanguageServer\Core\Service\ServiceProviders;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Psr\Log\Test\TestLogger;
 use RuntimeException;
+use function Amp\delay;
 
 class ServiceManagerTest extends AsyncTestCase
 {
@@ -90,7 +87,7 @@ class ServiceManagerTest extends AsyncTestCase
         self::assertTrue($this->logger->hasErrorThatContains('No'));
     }
 
-    public function testStopService(): Generator
+    public function testStopService(): void
     {
         $service = new DaemonService();
         $serviceManager = $this->createServiceManager($service);
@@ -99,11 +96,9 @@ class ServiceManagerTest extends AsyncTestCase
 
         $serviceManager->start('daemon');
 
-        yield \Amp\call(function () use ($serviceManager) {
-            yield new Delayed(10);
-            $serviceManager->stop('daemon');
-            yield new Delayed(10);
-        });
+        delay(0.01);
+        $serviceManager->stop('daemon');
+        delay(0.01);
 
         self::assertTrue($service->called);
     }
@@ -118,14 +113,6 @@ class ServiceManagerTest extends AsyncTestCase
         $serviceManager->stop('daemon');
     }
 
-    public function testThrowExceptionIfServiceDoesNotHaveMethod(): void
-    {
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Service method');
-        $service = new PingServiceNoPromise();
-        $serviceManager = $this->createServiceManager($service);
-        $serviceManager->startAll();
-    }
 
     public function testThrowExceptionIfServiceNotReturnPromise(): void
     {
@@ -145,7 +132,7 @@ class ServiceManagerTest extends AsyncTestCase
 class PingService implements ServiceProvider
 {
     public bool $called = false;
-    public CancellationToken $cancellationToken;
+    public Cancellation $cancellationToken;
 
     /**
      * {@inheritDoc}
@@ -165,40 +152,11 @@ class PingService implements ServiceProvider
         ];
     }
 
-    /**
-     * @return Promise<null>
-     */
-    public function ping(CancellationToken $token): Promise
+    public function ping(?Cancellation $token = null): void
     {
         $this->called = true;
+        assert($token !== null);
         $this->cancellationToken = $token;
-        return new Success();
-    }
-}
-
-class PingServiceNoPromise implements ServiceProvider
-{
-    /**
-     * {@inheritDoc}
-     */
-    public function methods(): array
-    {
-        return [];
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function services(): array
-    {
-        return [
-            'ping',
-        ];
-    }
-
-    public function ping()
-    {
-        return 'asd';
     }
 }
 
@@ -245,20 +203,17 @@ class DaemonService implements ServiceProvider
         ];
     }
 
-    public function daemon(CancellationToken $cancel): Promise
+    public function daemon(?Cancellation $cancel = null): void
     {
-        return \Amp\call(function () use ($cancel) {
-            while (true) {
-                try {
-                    $cancel->throwIfRequested();
-                } catch (CancelledException $cancelled) {
-                    break;
-                }
-                yield new Delayed(1);
+        while (true) {
+            try {
+                $cancel?->throwIfRequested();
+            } catch (CancelledException $cancelled) {
+                break;
             }
-            $this->called = true;
-            return null;
-        });
+            delay(0.001);
+        }
+        $this->called = true;
     }
 }
 
@@ -276,10 +231,8 @@ class ExceptionThrowingService implements ServiceProvider
         ];
     }
 
-    public function exception(CancellationToken $cancel): Promise
+    public function exception(?Cancellation $cancel = null): void
     {
-        return \Amp\call(function () use ($cancel): void {
-            throw new Exception('No');
-        });
+        throw new Exception('No');
     }
 }

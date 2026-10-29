@@ -3,7 +3,6 @@
 namespace Phpactor\LanguageServer\Tests\Unit\Middleware;
 
 use Amp\PHPUnit\AsyncTestCase;
-use Generator;
 use Phpactor\LanguageServerProtocol\InitializeResult;
 use Phpactor\LanguageServerProtocol\ServerCapabilities;
 use Phpactor\LanguageServer\Core\Handler\CanRegisterCapabilities;
@@ -37,10 +36,10 @@ class InitializeMiddlewareTest extends AsyncTestCase
         $this->dispatcher = $this->prophesize(EventDispatcherInterface::class);
     }
 
-    public function testReturnsOnInitializedNotification(): Generator
+    public function testReturnsOnInitializedNotification(): void
     {
         self::assertNull(
-            yield $this->createMiddleware()->process(
+            $this->createMiddleware()->process(
                 new NotificationMessage('initialized'),
                 new RequestHandler()
             )
@@ -48,31 +47,31 @@ class InitializeMiddlewareTest extends AsyncTestCase
         $this->dispatcher->dispatch(new Initialized())->shouldHaveBeenCalled();
     }
 
-    public function testDelegatesToNextHandlerIfMessageIsNotRequest(): Generator
+    public function testDelegatesToNextHandlerIfMessageIsNotRequest(): void
     {
         $this->expectException(MiddlewareTerminated::class);
         self::assertNull(
-            yield $this->createMiddleware()->process(
+            $this->createMiddleware()->process(
                 new NotificationMessage('foobar'),
                 new RequestHandler()
             )
         );
     }
 
-    public function testExceptionIfInitializedTwice(): Generator
+    public function testExceptionIfInitializedTwice(): void
     {
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Second initialize');
 
         $middleware = $this->createMiddleware();
 
-        yield $middleware->process(
+        $middleware->process(
             new RequestMessage(1, 'initialize', [
                 'capabilities' => [],
             ]),
             new RequestHandler()
         );
-        yield $middleware->process(
+        $middleware->process(
             new RequestMessage(1, 'initialize', [
                 'capabilities' => [],
             ]),
@@ -80,20 +79,21 @@ class InitializeMiddlewareTest extends AsyncTestCase
         );
     }
 
-    public function testReturnsInitializedResponse(): Generator
+    public function testReturnsInitializedResponse(): void
     {
         $middleware = $this->createMiddleware([], [
             'name' => 'test',
             'version' => '12a'
         ]);
 
-        $response = yield $middleware->process(
+        $response = $middleware->process(
             new RequestMessage(1, 'initialize', [
                 'capabilities' => [],
             ]),
             new RequestHandler()
         );
         self::assertInstanceOf(ResponseMessage::class, $response);
+        assert($response instanceof ResponseMessage);
         self::assertInstanceOf(InitializeResult::class, $response->result);
         self::assertEquals([
             'name' => 'test',
@@ -101,7 +101,7 @@ class InitializeMiddlewareTest extends AsyncTestCase
         ], $response->result->serverInfo);
     }
 
-    public function testHandlersCanRegisterCapabiltiies(): Generator
+    public function testHandlersCanRegisterCapabiltiies(): void
     {
         $handler = $this->prophesize(Handler::class)
             ->willImplement(CanRegisterCapabilities::class);
@@ -118,7 +118,7 @@ class InitializeMiddlewareTest extends AsyncTestCase
             $handler->reveal()
         ]);
 
-        $response = yield $middleware->process(
+        $response = $middleware->process(
             new RequestMessage(1, 'initialize', [
                 'capabilities' => [],
             ]),
@@ -126,6 +126,7 @@ class InitializeMiddlewareTest extends AsyncTestCase
         );
 
         self::assertInstanceOf(ResponseMessage::class, $response);
+        assert($response instanceof ResponseMessage);
         self::assertInstanceOf(InitializeResult::class, $response->result);
         self::assertTrue($response->result->capabilities->hoverProvider);
     }

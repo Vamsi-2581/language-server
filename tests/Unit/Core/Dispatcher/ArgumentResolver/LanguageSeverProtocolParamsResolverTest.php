@@ -2,8 +2,8 @@
 
 namespace Phpactor\LanguageServer\Tests\Unit\Core\Dispatcher\ArgumentResolver;
 
-use Amp\CancellationToken;
-use Amp\CancellationTokenSource;
+use Amp\Cancellation;
+use Amp\DeferredCancellation;
 use PHPUnit\Framework\TestCase;
 use Phpactor\LanguageServerProtocol\InitializeParams;
 use Phpactor\LanguageServer\Core\Dispatcher\ArgumentResolver\LanguageSeverProtocolParamsResolver;
@@ -68,27 +68,28 @@ class LanguageSeverProtocolParamsResolverTest extends TestCase
             ],
             'rootUri' => 'file://tmp/foo',
         ];
-        $cancellationToken = (new CancellationTokenSource())->getToken();
+        $cancellationToken = new DeferredCancellation();
+        $token = $cancellationToken->getCancellation();
         $extraArgs = [
-            'cancel' => $cancellationToken
+            'cancel' => $token
         ];
 
         $resolvedArgs = $resolver->resolveArguments($handler, 'initializeWrongOrder', ProtocolFactory::requestMessage('foo', $args));
 
         self::assertEquals([
             InitializeParams::fromArray($args),
-            $cancellationToken
+            $token
         ], $resolvedArgs);
     }
 }
 
 class LspHandler
 {
-    public function initialize(InitializeParams $params, CancellationToken $c): void
+    public function initialize(InitializeParams $params, Cancellation $c): void
     {
     }
 
-    public function initializeWrongOrder(CancellationToken $c, InitializeParams $params): void
+    public function initializeWrongOrder(Cancellation $c, InitializeParams $params): void
     {
     }
 

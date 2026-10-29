@@ -3,8 +3,6 @@
 namespace Phpactor\LanguageServer\Tests\Unit\Middleware;
 
 use Amp\PHPUnit\AsyncTestCase;
-use Amp\Success;
-use Generator;
 use Phpactor\LanguageServer\Core\Handler\MethodRunner;
 use Phpactor\LanguageServer\Core\Rpc\NotificationMessage;
 use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
@@ -30,13 +28,13 @@ class CancellationMiddlewareTest extends AsyncTestCase
         $this->runner = $this->prophesize(MethodRunner::class);
     }
     
-    public function testDelegatesToNextHandlerIfMessageIsNotNotification(): Generator
+    public function testDelegatesToNextHandlerIfMessageIsNotNotification(): void
     {
-        $response = yield $this->createMiddleware()->process(
+        $response = $this->createMiddleware()->process(
             new RequestMessage(1, 'foobar', []),
             new RequestHandler([
                 new ClosureMiddleware(function () {
-                    return new Success(new ResponseMessage(1, null));
+                    return new ResponseMessage(1, null);
                 })
             ])
         );
@@ -45,13 +43,13 @@ class CancellationMiddlewareTest extends AsyncTestCase
         self::assertInstanceOf(ResponseMessage::class, $response);
     }
 
-    public function testDelegatesToNextHandlerIfMethodNotCancel(): Generator
+    public function testDelegatesToNextHandlerIfMethodNotCancel(): void
     {
-        $response = yield $this->createMiddleware()->process(
+        $response = $this->createMiddleware()->process(
             new NotificationMessage('foobar', []),
             new RequestHandler([
                 new ClosureMiddleware(function () {
-                    return new Success(new ResponseMessage(1, null));
+                    return new ResponseMessage(1, null);
                 })
             ])
         );
@@ -60,11 +58,11 @@ class CancellationMiddlewareTest extends AsyncTestCase
         self::assertInstanceOf(ResponseMessage::class, $response);
     }
 
-    public function testCancelsRunningRequest(): Generator
+    public function testCancelsRunningRequest(): void
     {
         $this->runner->cancelRequest(1)->shouldBeCalled();
 
-        $response = yield $this->createMiddleware()->process(
+        $response = $this->createMiddleware()->process(
             new NotificationMessage('$/cancelRequest', [
                 'id' => 1,
             ]),

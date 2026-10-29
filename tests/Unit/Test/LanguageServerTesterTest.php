@@ -2,9 +2,8 @@
 
 namespace Phpactor\LanguageServer\Tests\Unit\Test;
 
-use Amp\CancellationToken;
+use Amp\Cancellation;
 use Amp\CancelledException;
-use Amp\Success;
 use PHPUnit\Framework\TestCase;
 use Phpactor\LanguageServerProtocol\InitializeParams;
 use Phpactor\LanguageServerProtocol\ServerCapabilities;
@@ -15,8 +14,6 @@ use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Example\Service\PingProvider;
 use Phpactor\LanguageServer\Test\LanguageServerTester;
 use Phpactor\LanguageServer\Test\ProtocolFactory;
-use function Amp\Promise\wait;
-use function Amp\call;
 use function Amp\delay;
 
 class LanguageServerTesterTest extends TestCase
@@ -26,12 +23,12 @@ class LanguageServerTesterTest extends TestCase
     public function testDispatch(): void
     {
         $tester = $this->createTester();
-        $response = wait($tester->dispatch(
+        $response = $tester->dispatch(
             ProtocolFactory::requestMessage(
                 'foobar',
                 ['foo' => 'Barfoo']
             )
-        ));
+        )->await();
         $this->assertSuccessResponse($response);
     }
 
@@ -50,7 +47,7 @@ class LanguageServerTesterTest extends TestCase
     public function testRequest(): void
     {
         $tester = $this->createTester();
-        $response = wait($tester->request('foobar', ['foobar' => 'Barfoo']));
+        $response = $tester->request('foobar', ['foobar' => 'Barfoo'])->await();
         $this->assertSuccessResponse($response);
     }
 
@@ -67,13 +64,13 @@ class LanguageServerTesterTest extends TestCase
         $tester = $this->createTester();
         $responsePromise = $tester->request('delay_and_check_cancellation', [], 1);
         $tester->cancel(1);
-        wait($responsePromise);
+        $responsePromise->await();
     }
 
     public function testNotify(): void
     {
         $tester = $this->createTester();
-        $response = wait($tester->notify('foobar', ['foobar' => 'Barfoo']));
+        $response = $tester->notify('foobar', ['foobar' => 'Barfoo'])->await();
         $this->assertNotifysTransmission($tester);
     }
 
@@ -122,23 +119,21 @@ class LanguageServerTesterTest extends TestCase
         $builder->enableTextDocuments();
         $builder->addServiceProvider(new PingProvider($builder->clientApi()));
         $builder->addHandler(
-            new ClosureHandler('foobar', function (CancellationToken $token) use ($builder) {
+            new ClosureHandler('foobar', function (Cancellation $token) use ($builder) {
                 $builder->transmitter()->transmit(new NotificationMessage(self::SUCCESS, [
                     'message' => self::SUCCESS
                 ]));
 
 
-                return new Success(self::SUCCESS);
+                return self::SUCCESS;
             })
         );
         $builder->addHandler(
-            new ClosureHandler('delay_and_check_cancellation', function (CancellationToken $token) {
-                return call(function () use ($token) {
-                    yield delay(10);
-                    $token->throwIfRequested();
+            new ClosureHandler('delay_and_check_cancellation', function (Cancellation $token) {
+                delay(0.01);
+                $token->throwIfRequested();
 
-                    return self::SUCCESS;
-                });
+                return self::SUCCESS;
             })
         );
 

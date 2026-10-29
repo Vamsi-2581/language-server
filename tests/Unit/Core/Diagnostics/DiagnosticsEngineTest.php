@@ -2,41 +2,34 @@
 
 namespace Phpactor\LanguageServer\Tests\Unit\Core\Diagnostics;
 
-use Amp\CancellationTokenSource;
-use Amp\Delayed;
+use Amp\DeferredCancellation;
 use Amp\PHPUnit\AsyncTestCase;
-use Amp\Success;
-use Generator;
 use Phpactor\LanguageServerProtocol\TextDocumentItem;
+use Phpactor\LanguageServer\Core\AsyncCall;
 use Phpactor\LanguageServer\Core\Diagnostics\ClosureDiagnosticsProvider;
 use Phpactor\LanguageServer\Core\Diagnostics\DiagnosticsEngine;
 use Phpactor\LanguageServer\Core\Rpc\NotificationMessage;
 use Phpactor\LanguageServer\LanguageServerTesterBuilder;
 use Phpactor\LanguageServer\Test\ProtocolFactory;
 use Psr\Log\NullLogger;
-use function Amp\asyncCall;
-use function Amp\call;
 use function Amp\delay;
 use Exception;
 
 class DiagnosticsEngineTest extends AsyncTestCase
 {
-    /**
-     * @return Generator<mixed>
-     */
-    public function testPublishesDiagnostics(): Generator
+    public function testPublishesDiagnostics(): void
     {
         $tester = LanguageServerTesterBuilder::create();
         $engine = $this->createEngine($tester, 0, 0);
 
-        $token = new CancellationTokenSource();
-        $promise = $engine->run($token->getToken());
+        $token = new DeferredCancellation();
+        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(
             ProtocolFactory::textDocumentItem('file:///foobar', 'foobar')
         );
 
-        yield new Delayed(10);
+        delay(0.01);
 
         $token->cancel();
 
@@ -52,22 +45,19 @@ class DiagnosticsEngineTest extends AsyncTestCase
         self::assertEquals('Foobar is broken', $notification->params['diagnostics'][0]->message ?? null);
     }
 
-    /**
-     * @return Generator<mixed>
-     */
-    public function testOnlyPublishesForMostRecentFile(): Generator
+    public function testOnlyPublishesForMostRecentFile(): void
     {
         $tester = LanguageServerTesterBuilder::create();
         $engine = $this->createEngine($tester, 0, 0);
 
-        $token = new CancellationTokenSource();
-        $promise = $engine->run($token->getToken());
+        $token = new DeferredCancellation();
+        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'foobar'));
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///barfoo', 'foobar'));
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///bazbar', 'foobar'));
 
-        yield new Delayed(1);
+        delay(0.001);
 
         $token->cancel();
 
@@ -75,22 +65,19 @@ class DiagnosticsEngineTest extends AsyncTestCase
         self::assertEquals(2, $tester->transmitter()->count());
     }
 
-    /**
-     * @return Generator<mixed>
-     */
-    public function testDoesNotProcessMoreThanOneDocument(): Generator
+    public function testDoesNotProcessMoreThanOneDocument(): void
     {
         $tester = LanguageServerTesterBuilder::create();
         $engine = $this->createEngine($tester, 1, 0);
 
-        $token = new CancellationTokenSource();
-        $promise = $engine->run($token->getToken());
+        $token = new DeferredCancellation();
+        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'foobar'));
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'foobar'));
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'foobar'));
 
-        yield new Delayed(10);
+        delay(0.01);
 
         $token->cancel();
 
@@ -98,56 +85,53 @@ class DiagnosticsEngineTest extends AsyncTestCase
         self::assertEquals(2, $tester->transmitter()->count());
     }
 
-    /**
-     * @return Generator<mixed>
-     */
-    public function testSleepPreventsSeige(): Generator
+    public function testSleepPreventsSeige(): void
     {
         $tester = LanguageServerTesterBuilder::create();
         $engine = $this->createEngine($tester, 5, 10);
 
-        $token = new CancellationTokenSource();
-        $promise = $engine->run($token->getToken());
+        $token = new DeferredCancellation();
+        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'bazboo'));
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///barfoo', 'foobar'));
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///bazbar', 'foobar'));
 
-        yield new Delayed(100);
+        delay(0.1);
 
         $token->cancel();
 
         self::assertEquals(2, $tester->transmitter()->count());
     }
 
-    public function testAggregatesResultsFromMultipleProviders(): Generator
+    public function testAggregatesResultsFromMultipleProviders(): void
     {
         $tester = LanguageServerTesterBuilder::create();
         $engine = new DiagnosticsEngine($tester->clientApi(), new NullLogger(), [
             new ClosureDiagnosticsProvider(function (TextDocumentItem $item) {
-                return new Success([
+                return [
                     ProtocolFactory::diagnostic(ProtocolFactory::range(0, 0, 0, 0), 'Foobar is broken')
-                ]);
+                ];
             }),
             new ClosureDiagnosticsProvider(function (TextDocumentItem $item) {
-                return new Success([
+                return [
                     ProtocolFactory::diagnostic(ProtocolFactory::range(0, 0, 0, 0), 'Barfoo is broken')
-                ]);
+                ];
             })
         ], 10);
 
-        $token = new CancellationTokenSource();
-        $promise = $engine->run($token->getToken());
+        $token = new DeferredCancellation();
+        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'bazboo'));
 
-        yield new Delayed(100);
+        delay(0.1);
 
         self::assertEquals(3, $tester->transmitter()->count());
 
     }
 
-    public function testHandlesLinterExceptions(): Generator
+    public function testHandlesLinterExceptions(): void
     {
         $tester = LanguageServerTesterBuilder::create();
         $engine = new DiagnosticsEngine($tester->clientApi(), new NullLogger(), [
@@ -156,12 +140,12 @@ class DiagnosticsEngineTest extends AsyncTestCase
             }),
         ], 10);
 
-        $token = new CancellationTokenSource();
-        $promise = $engine->run($token->getToken());
+        $token = new DeferredCancellation();
+        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', 'bazboo'));
 
-        yield new Delayed(100);
+        delay(0.1);
 
         self::assertEquals(2, $tester->transmitter()->count());
         $notification = $tester->transmitter()->shiftNotification();
@@ -179,51 +163,46 @@ class DiagnosticsEngineTest extends AsyncTestCase
      * It DOES NOT reproduce the race condition sadly.
      *
      * See the commit this change was introduced to see what it SHOULD have covered.
-     *
-     * @return Generator<mixed>
      */
-    public function testAlwaysAnalyzesTheLastChangeLast(): Generator
+    public function testAlwaysAnalyzesTheLastChangeLast(): void
     {
         $tester = LanguageServerTesterBuilder::create();
         $lastDocument = '';
         $engine = $this->createEngine($tester, 5, 0, $lastDocument);
 
-        $token = new CancellationTokenSource();
-        asyncCall(function () use ($engine, $token) {
-            yield $engine->run($token->getToken());
-        });
-        yield new Delayed(1);
+        $token = new DeferredCancellation();
+        AsyncCall::start(fn () => $engine->run($token->getCancellation()));
+        delay(0.001);
 
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', '1', version: 1));
-        yield new Delayed(1);
+        delay(0.001);
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', '2', version: 2));
-        yield new Delayed(10);
+        delay(0.01);
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', '3', version: 3));
-        yield new Delayed(1);
+        delay(0.001);
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', '4', version: 4));
-        yield new Delayed(1);
+        delay(0.001);
         $engine->enqueue(ProtocolFactory::textDocumentItem('file:///foobar', '5', version: 5));
 
-        yield new Delayed(100);
+        delay(0.1);
 
         $token->cancel();
 
         self::assertEquals('5', $lastDocument);
     }
 
-    private function createEngine(LanguageServerTesterBuilder $tester, int $delay = 0, int $sleepTime = 0, string &$lastDocument = null): DiagnosticsEngine
+    private function createEngine(LanguageServerTesterBuilder $tester, int $delayMs = 0, int $sleepTime = 0, ?string &$lastDocument = null): DiagnosticsEngine
     {
         return new DiagnosticsEngine($tester->clientApi(), new NullLogger(), [
-            new ClosureDiagnosticsProvider(function (TextDocumentItem $item) use ($delay, &$lastDocument) {
-                return call(function () use ($delay, $item, &$lastDocument) {
-                    if ($delay) {
-                        yield delay($delay);
-                    }
-                    $lastDocument = $item->text;
-                    return [
-                        ProtocolFactory::diagnostic(ProtocolFactory::range(0, 0, 0, 0), 'Foobar is broken')
-                    ];
-                });
+            new ClosureDiagnosticsProvider(function (TextDocumentItem $item) use ($delayMs, &$lastDocument) {
+                if ($delayMs) {
+                    delay($delayMs / 1000);
+                }
+                $lastDocument = $item->text;
+
+                return [
+                    ProtocolFactory::diagnostic(ProtocolFactory::range(0, 0, 0, 0), 'Foobar is broken')
+                ];
             })
         ], $sleepTime);
     }
