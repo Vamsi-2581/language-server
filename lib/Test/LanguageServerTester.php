@@ -2,7 +2,7 @@
 
 namespace Phpactor\LanguageServer\Test;
 
-use Amp\Promise;
+use Amp\Future;
 use Phpactor\LanguageServerProtocol\InitializeParams;
 use Phpactor\LanguageServerProtocol\InitializeResult;
 use Phpactor\LanguageServer\Core\Dispatcher\Dispatcher;
@@ -17,8 +17,8 @@ use Phpactor\LanguageServer\Core\Server\Transmitter\TestMessageTransmitter;
 use Phpactor\LanguageServer\Test\LanguageServerTester\ServicesTester;
 use Phpactor\LanguageServer\Test\LanguageServerTester\TextDocumentTester;
 use Phpactor\LanguageServer\Test\LanguageServerTester\WorkspaceTester;
+use Phpactor\LanguageServer\Core\AsyncCall;
 use RuntimeException;
-use function Amp\Promise\wait;
 
 final class LanguageServerTester
 {
@@ -34,24 +34,24 @@ final class LanguageServerTester
     }
 
     /**
-     * @return Promise<ResponseMessage|null>
+     * @return Future<ResponseMessage|null>
      */
-    public function dispatch(Message $message): Promise
+    public function dispatch(Message $message): Future
     {
-        return $this->dispatcher->dispatch($message);
+        return AsyncCall::start(fn () => $this->dispatcher->dispatch($message));
     }
 
     public function dispatchAndWait(Message $message): ?ResponseMessage
     {
-        return wait($this->dispatcher->dispatch($message));
+        return $this->dispatch($message)->await();
     }
 
     /**
      * @param array|object $params
      * @param int|string $id
-     * @return Promise<ResponseMessage|null>
+     * @return Future<ResponseMessage|null>
      */
-    public function request(string $method, $params, $id = null): Promise
+    public function request(string $method, $params, $id = null): Future
     {
         $requestMessage = new RequestMessage($id ?: uniqid(), $method, $this->normalizeParams($params));
 
@@ -64,7 +64,7 @@ final class LanguageServerTester
      */
     public function requestAndWait(string $method, $params, $id = null): ?ResponseMessage
     {
-        return wait($this->request($method, $this->normalizeParams($params), $id));
+        return $this->request($method, $this->normalizeParams($params), $id)->await();
     }
 
     /**
@@ -87,9 +87,9 @@ final class LanguageServerTester
     /**
      * @param mixed $value
      * @param string|int $id
-     * @return Promise<mixed>
+     * @return Future<mixed>
      */
-    public function respond($id, $value): Promise
+    public function respond($id, $value): Future
     {
         $requestMessage = new ResponseMessage($id, $value);
 
@@ -103,15 +103,15 @@ final class LanguageServerTester
      */
     public function respondAndWait($id, $value)
     {
-        return wait($this->respond($id, $value));
+        return $this->respond($id, $value)->await();
     }
 
 
     /**
      * @param array|object $params
-     * @return Promise<ResponseMessage|null>
+     * @return Future<ResponseMessage|null>
      */
-    public function notify(string $method, $params): Promise
+    public function notify(string $method, $params): Future
     {
         $notifyMessage = new NotificationMessage($method, $this->normalizeParams($params));
 
@@ -123,7 +123,7 @@ final class LanguageServerTester
      */
     public function notifyAndWait(string $method, $params): void
     {
-        wait($this->notify($method, $this->normalizeParams($params)));
+        $this->notify($method, $this->normalizeParams($params))->await();
     }
 
     public function transmitter(): TestMessageTransmitter

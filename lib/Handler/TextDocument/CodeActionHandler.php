@@ -2,8 +2,7 @@
 
 namespace Phpactor\LanguageServer\Handler\TextDocument;
 
-use Amp\CancellationToken;
-use Amp\Promise;
+use Amp\Cancellation;
 use Phpactor\LanguageServerProtocol\CodeAction;
 use Phpactor\LanguageServerProtocol\CodeActionOptions;
 use Phpactor\LanguageServerProtocol\CodeActionParams;
@@ -16,7 +15,6 @@ use Phpactor\LanguageServer\Core\Workspace\Workspace;
 use Phpactor\LanguageServer\WorkDoneProgress\ProgressNotifier;
 use Phpactor\LanguageServer\WorkDoneProgress\SilentWorkDoneProgressNotifier;
 use Phpactor\LanguageServer\WorkDoneProgress\WorkDoneToken;
-use function Amp\call;
 
 class CodeActionHandler implements Handler, CanRegisterCapabilities
 {
@@ -44,21 +42,20 @@ class CodeActionHandler implements Handler, CanRegisterCapabilities
     }
 
     /**
-     * @return Promise<array<CodeAction>>
+     * @return array<CodeAction>
      */
-    public function codeAction(CodeActionParams $params, CancellationToken $cancel): Promise
+    public function codeAction(CodeActionParams $params, ?Cancellation $cancel = null): array
     {
-        return call(function () use ($params, $cancel) {
-            $token = WorkDoneToken::generate();
-            yield $this->notifier->create($token);
-            $document = $this->workspace->get($params->textDocument->uri);
-            $this->notifier->begin($token, title: 'Resolving code actions');
-            try {
-                $actions = yield $this->provider->provideActionsFor($document, $params->range, $cancel);
-            } finally {
-                $this->notifier->end($token);
-            }
-            return $actions;
-        });
+        $token = WorkDoneToken::generate();
+        $this->notifier->create($token);
+        $document = $this->workspace->get($params->textDocument->uri);
+        $this->notifier->begin($token, title: 'Resolving code actions');
+        try {
+            $actions = $this->provider->provideActionsFor($document, $params->range, $cancel);
+        } finally {
+            $this->notifier->end($token);
+        }
+
+        return $actions;
     }
 }

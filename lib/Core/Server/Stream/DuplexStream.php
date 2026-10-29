@@ -2,9 +2,13 @@
 
 namespace Phpactor\LanguageServer\Core\Server\Stream;
 
-use Amp\ByteStream\InputStream;
-use Amp\ByteStream\OutputStream;
-
-interface DuplexStream extends InputStream, OutputStream
+interface DuplexStream
 {
+    public function read(): ?string;
+
+    public function write(string $data): void;
+
+    public function end(): void;
+
+    public function close(): void;
 }

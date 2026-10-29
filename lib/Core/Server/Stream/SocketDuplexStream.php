@@ -2,7 +2,6 @@
 
 namespace Phpactor\LanguageServer\Core\Server\Stream;
 
-use Amp\Promise;
 use Amp\Socket\Socket;
 
 final class SocketDuplexStream implements DuplexStream
@@ -11,27 +10,23 @@ final class SocketDuplexStream implements DuplexStream
     {
     }
 
-    /**
-     * @return Promise<string|null>
-     */
-    public function read(): Promise
+    public function read(): ?string
     {
         return $this->socket->read();
     }
 
-    /**
-     * @return Promise<void>
-     */
-    public function write(string $data): Promise
+    public function write(string $data): void
     {
-        return $this->socket->write($data);
+        $this->socket->write($data);
     }
 
-    /**
-     * @return Promise<void>
-     */
-    public function end(string $finalData = ''): Promise
+    public function end(): void
     {
-        return $this->socket->end($finalData);
+        $this->socket->end();
+    }
+
+    public function close(): void
+    {
+        $this->socket->close();
     }
 }

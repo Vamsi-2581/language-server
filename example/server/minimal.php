@@ -1,7 +1,6 @@
 #!/usr/bin/env php
 <?php
 
-use Amp\Success;
 use Phpactor\LanguageServer\Core\Middleware\RequestHandler;
 use Phpactor\LanguageServer\Core\Rpc\Message;
 use Phpactor\LanguageServer\Core\Rpc\RequestMessage;
@@ -23,7 +22,7 @@ $builder = LanguageServerBuilder::create(new ClosureDispatcherFactory(
                     return $handler->handle($message);
                 }
 
-                return new Success(new ResponseMessage($message->id, 'Hello World!'));
+                return new ResponseMessage($message->id, 'Hello World!');
             })
         );
     }

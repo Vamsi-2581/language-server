@@ -2,12 +2,11 @@
 
 namespace Phpactor\LanguageServer\Example\Service;
 
-use Amp\CancellationToken;
+use Amp\Cancellation;
 use Amp\CancelledException;
-use Amp\Delayed;
-use Amp\Promise;
 use Phpactor\LanguageServer\Core\Server\ClientApi;
 use Phpactor\LanguageServer\Core\Service\ServiceProvider;
+use function Amp\delay;
 
 /**
  * Example service which shows a "ping" message every second.
@@ -28,21 +27,16 @@ class PingProvider implements ServiceProvider
         ];
     }
 
-    /**
-     * @return Promise<null>
-     */
-    public function ping(CancellationToken $cancel): Promise
+    public function ping(?Cancellation $cancel = null): void
     {
-        return \Amp\call(function () use ($cancel) {
-            while (true) {
-                try {
-                    $cancel->throwIfRequested();
-                } catch (CancelledException $cancelled) {
-                    break;
-                }
-                yield new Delayed(1000);
-                $this->client->window()->showMessage()->info('ping');
+        while (true) {
+            try {
+                $cancel?->throwIfRequested();
+            } catch (CancelledException $cancelled) {
+                break;
             }
-        });
+            delay(1);
+            $this->client->window()->showMessage()->info('ping');
+        }
     }
 }

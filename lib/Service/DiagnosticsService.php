@@ -2,8 +2,7 @@
 
 namespace Phpactor\LanguageServer\Service;
 
-use Amp\CancellationToken;
-use Amp\Promise;
+use Amp\Cancellation;
 use Phpactor\LanguageServerProtocol\TextDocumentItem;
 use Phpactor\LanguageServer\Core\Diagnostics\DiagnosticsEngine;
 use Phpactor\LanguageServer\Core\Service\ServiceProvider;
@@ -36,12 +35,9 @@ class DiagnosticsService implements ServiceProvider, ListenerProviderInterface
         ];
     }
 
-    /**
-     * @return Promise<bool>
-     */
-    public function diagnostics(CancellationToken $cancellationToken): Promise
+    public function diagnostics(?Cancellation $cancellationToken = null): void
     {
-        return $this->engine->run($cancellationToken);
+        $this->engine->run($cancellationToken);
     }
 
     /**

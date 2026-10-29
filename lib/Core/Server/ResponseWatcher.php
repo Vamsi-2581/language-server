@@ -2,7 +2,7 @@
 
 namespace Phpactor\LanguageServer\Core\Server;
 
-use Amp\Promise;
+use Amp\Future;
 use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 
 interface ResponseWatcher
@@ -10,7 +10,10 @@ interface ResponseWatcher
     public function handle(ResponseMessage $response): void;
 
     /**
-     * @return Promise<ResponseMessage>
+     * Register interest in a response. Returns a future which completes when
+     * the response is handled.
+     *
+     * @return Future<ResponseMessage>
      */
-    public function waitForResponse(int|string $requestId): Promise;
+    public function waitForResponse(int|string $requestId): Future;
 }

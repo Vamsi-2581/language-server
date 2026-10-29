@@ -2,7 +2,6 @@
 
 namespace Phpactor\LanguageServer\Handler\TextDocument;
 
-use Amp\Promise;
 use Phpactor\LanguageServerProtocol\FormattingOptions;
 use Phpactor\LanguageServerProtocol\ServerCapabilities;
 use Phpactor\LanguageServerProtocol\TextDocumentIdentifier;
@@ -14,7 +13,6 @@ use Phpactor\LanguageServer\Core\Workspace\Workspace;
 use Phpactor\LanguageServer\WorkDoneProgress\ProgressNotifier;
 use Phpactor\LanguageServer\WorkDoneProgress\SilentWorkDoneProgressNotifier;
 use Phpactor\LanguageServer\WorkDoneProgress\WorkDoneToken;
-use function Amp\call;
 
 class FormattingHandler implements Handler, CanRegisterCapabilities
 {
@@ -31,23 +29,21 @@ class FormattingHandler implements Handler, CanRegisterCapabilities
     }
 
     /**
-     * @return Promise<array<int,TextEdit[]>|null>
+     * @return list<TextEdit>|null
      */
-    public function formatting(TextDocumentIdentifier $textDocument, FormattingOptions $options): Promise
+    public function formatting(TextDocumentIdentifier $textDocument, FormattingOptions $options): ?array
     {
-        return call(function () use ($textDocument) {
-            $token = WorkDoneToken::generate();
-            yield $this->notifier->create($token);
-            $document = $this->workspace->get($textDocument->uri);
-            $this->notifier->begin($token, 'Formatting document');
-            try {
-                $formatted = yield $this->formatter->format($document);
-            } finally {
-                $this->notifier->end($token);
-            }
+        $token = WorkDoneToken::generate();
+        $this->notifier->create($token);
+        $document = $this->workspace->get($textDocument->uri);
+        $this->notifier->begin($token, 'Formatting document');
+        try {
+            $formatted = $this->formatter->format($document);
+        } finally {
+            $this->notifier->end($token);
+        }
 
-            return $formatted;
-        });
+        return $formatted;
     }
 
     public function registerCapabiltiies(ServerCapabilities $capabilities): void

@@ -2,14 +2,12 @@
 
 namespace Phpactor\LanguageServer\Handler\System;
 
-use Amp\Delayed;
-use Amp\Promise;
 use Phpactor\LanguageServer\Adapter\Psr\NullEventDispatcher;
 use Phpactor\LanguageServer\Core\Handler\Handler;
 use Phpactor\LanguageServer\Core\Server\Exception\ExitSession;
 use Phpactor\LanguageServer\Event\WillShutdown;
 use Psr\EventDispatcher\EventDispatcherInterface;
-use function Amp\call;
+use function Amp\delay;
 
 class ExitHandler implements Handler
 {
@@ -27,15 +25,10 @@ class ExitHandler implements Handler
         ];
     }
 
-    /**
-     * @return Promise<null>
-     */
-    public function shutdown(): Promise
+    public function shutdown(): void
     {
-        return call(function () {
-            $this->eventDispatcher->dispatch(new WillShutdown());
-            yield new Delayed($this->gracePeriod);
-        });
+        $this->eventDispatcher->dispatch(new WillShutdown());
+        delay($this->gracePeriod / 1000);
     }
 
     public function exit(): void

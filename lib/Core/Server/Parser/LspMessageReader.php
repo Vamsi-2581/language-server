@@ -2,9 +2,8 @@
 
 namespace Phpactor\LanguageServer\Core\Server\Parser;
 
-use Amp\ByteStream\InputStream;
-use Amp\Promise;
 use Phpactor\LanguageServer\Core\Rpc\RawMessage;
+use Phpactor\LanguageServer\Core\Server\Stream\DuplexStream;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use function json_encode;
@@ -26,24 +25,24 @@ final class LspMessageReader implements RequestReader
     private ?array $headers = null;
 
     public function __construct(
-        private InputStream $stream,
+        private DuplexStream $stream,
         private LoggerInterface $logger = new NullLogger(),
     ) {
     }
 
-    public function wait(): Promise
+    public function readMessage(): ?RawMessage
     {
-        return \Amp\call(function () {
-            if (null !== $request = $this->processChunk($this->overflow)) {
+        if (null !== $request = $this->processChunk($this->overflow)) {
+            return $request;
+        }
+
+        while (null !== $chunk = $this->stream->read()) {
+            if (null !== $request = $this->processChunk($chunk)) {
                 return $request;
             }
+        }
 
-            while (null !== $chunk = yield $this->stream->read()) {
-                if (null !== $request = $this->processChunk($chunk)) {
-                    return $request;
-                }
-            }
-        });
+        return null;
     }
 
     private function processChunk(string $chunk): ?RawMessage

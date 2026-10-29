@@ -2,7 +2,7 @@
 
 namespace Phpactor\LanguageServer\Core\Server\ResponseWatcher;
 
-use Amp\Promise;
+use Amp\Future;
 use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Core\Server\ResponseWatcher;
 use RuntimeException;
@@ -40,7 +40,7 @@ final class TestResponseWatcher implements ResponseWatcher
     /**
      * {@inheritDoc}
      */
-    public function waitForResponse(int|string $requestId): Promise
+    public function waitForResponse(int|string $requestId): Future
     {
         $this->requestIds[] = $requestId;
         return $this->innerWatcher->waitForResponse($requestId);

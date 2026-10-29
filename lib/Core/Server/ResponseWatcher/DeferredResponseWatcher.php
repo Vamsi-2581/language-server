@@ -2,8 +2,8 @@
 
 namespace Phpactor\LanguageServer\Core\Server\ResponseWatcher;
 
-use Amp\Deferred;
-use Amp\Promise;
+use Amp\DeferredFuture;
+use Amp\Future;
 use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Core\Server\ResponseWatcher;
 use RuntimeException;
@@ -11,14 +11,14 @@ use RuntimeException;
 final class DeferredResponseWatcher implements ResponseWatcher
 {
     /**
-     * @var array<string|int, Deferred<ResponseMessage>>
+     * @var array<string|int, DeferredFuture<ResponseMessage>>
      */
     private array $watchers = [];
 
     public function handle(ResponseMessage $response): void
     {
         if (isset($this->watchers[$response->id])) {
-            $this->watchers[$response->id]->resolve($response);
+            $this->watchers[$response->id]->complete($response);
             return;
         }
 
@@ -28,13 +28,11 @@ final class DeferredResponseWatcher implements ResponseWatcher
         ));
     }
 
-    /**
-     * @return Promise<ResponseMessage>
-     */
-    public function waitForResponse(int|string $requestId): Promise
+    public function waitForResponse(int|string $requestId): Future
     {
-        $deferred = new Deferred();
+        $deferred = new DeferredFuture();
         $this->watchers[$requestId] = $deferred;
-        return $deferred->promise();
+
+        return $deferred->getFuture();
     }
 }

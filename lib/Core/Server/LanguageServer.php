@@ -2,10 +2,6 @@
 
 namespace Phpactor\LanguageServer\Core\Server;
 
-use Amp\Loop;
-use Amp\Promise;
-use Exception;
-use Generator;
 use Phpactor\LanguageServer\Core\Rpc\Exception\CouldNotCreateMessage;
 use Phpactor\LanguageServer\Core\Rpc\Message;
 use Phpactor\LanguageServer\Core\Rpc\ResponseError;
@@ -23,10 +19,12 @@ use Phpactor\LanguageServer\Core\Server\StreamProvider\StreamProvider;
 use Phpactor\LanguageServer\Core\Rpc\RequestMessageFactory;
 use Psr\Log\LoggerInterface;
 use Phpactor\LanguageServer\Core\Dispatcher\Dispatcher;
+use Phpactor\LanguageServer\Core\AsyncCall;
+use Revolt\EventLoop;
 use RuntimeException;
 use Throwable;
-use function Amp\Promise\any;
-use function Amp\call;
+use function Amp\async;
+use function Amp\Future\awaitAny;
 
 final class LanguageServer
 {
@@ -47,15 +45,11 @@ final class LanguageServer
     /**
      * Start the language server only. Event loop is not started.
      *
-     * Return a promise which resolves when the language server stops
-     *
-     * @return Promise<void>
+     * Blocks until the language server stops.
      */
-    public function start(): Promise
+    public function start(): void
     {
-        return call(function () {
-            yield from $this->listenForConnections();
-        });
+        $this->listenForConnections();
     }
 
     /**
@@ -65,15 +59,15 @@ final class LanguageServer
     {
         // Signals are not supported on Windows
         if (defined('SIGINT')) {
-            Loop::onSignal(SIGINT, function (string $watcherId) {
-                Loop::cancel($watcherId);
-                yield $this->shutdown();
+            EventLoop::onSignal(SIGINT, function (string $watcherId): void {
+                EventLoop::cancel($watcherId);
+                async(fn () => $this->shutdown());
             });
         }
 
-        Loop::setErrorHandler(function (Throwable $error): void {
+        EventLoop::setErrorHandler(function (Throwable $error): void {
             if ($error instanceof ShutdownServer) {
-                Loop::stop();
+                EventLoop::getDriver()->stop();
                 return;
             }
 
@@ -81,9 +75,9 @@ final class LanguageServer
             throw $error;
         });
 
-        Loop::run(function () {
-            yield $this->start();
-        });
+        async(fn () => $this->start());
+
+        EventLoop::run();
     }
 
     /**
@@ -104,26 +98,23 @@ final class LanguageServer
         return $this->streamProvider->address();
     }
 
-    /**
-     * @return Promise<void>
-     */
-    public function shutdown(): Promise
+    public function shutdown(): void
     {
-        return call(function () {
-            $this->logger->info('Shutting down');
+        $this->logger->info('Shutting down');
 
-            $promises = [];
-            foreach ($this->connections as $connection) {
-                $promises[] = $connection->stream()->end();
-            }
+        $futures = [];
+        foreach ($this->connections as $connection) {
+            $futures[] = async(fn () => $connection->stream()->end());
+        }
 
-            yield any($promises);
+        if ($futures) {
+            awaitAny($futures);
+        }
 
-            $this->streamProvider->close();
-        });
+        $this->streamProvider->close();
     }
 
-    private function listenForConnections(): Generator
+    private function listenForConnections(): void
     {
         if ($this->streamProvider instanceof SocketStreamProvider) {
             $this->logger->info(sprintf(
@@ -135,65 +126,60 @@ final class LanguageServer
         // accept incoming connections (in the case of a TCP server this is
         // a connection, with a STDIO stream this just returns the stream
         // immediately)
-        while ($connection = yield $this->streamProvider->accept()) {
+        while ($connection = $this->streamProvider->accept()) {
             $this->stats->incConnectionCount();
 
             // create a reference to the connection so that we can later
             // terminate it if necessary
             $this->connections[$connection->id()] = $connection;
 
-            \Amp\asyncCall(function () use ($connection) {
-                yield $this->handle($connection);
+            AsyncCall::start(function () use ($connection): void {
+                $this->handle($connection);
                 $this->stats->decConnectionCount();
             });
         }
     }
 
-    /**
-     * @return Promise<void>
-     */
-    private function handle(Connection $connection): Promise
+    private function handle(Connection $connection): void
     {
-        return \Amp\call(function () use ($connection) {
-            $transmitter = new ConnectionMessageTransmitter($connection);
-            $reader = new LspMessageReader($connection->stream(), $this->logger);
-            $dispatcher = null;
+        $transmitter = new ConnectionMessageTransmitter($connection);
+        $reader = new LspMessageReader($connection->stream(), $this->logger);
+        $dispatcher = null;
 
-            // wait for the next request
-            while (null !== $request = yield $reader->wait()) {
-                $this->stats->incRequestCount();
+        // wait for the next request
+        while (null !== $request = $reader->readMessage()) {
+            $this->stats->incRequestCount();
 
-                try {
-                    $request = RequestMessageFactory::fromRequest($request);
-                } catch (CouldNotCreateMessage $e) {
-                    $transmitter->transmit(new ResponseMessage(
-                        $request->body()['id'] ?? 0,
-                        [],
-                        new ResponseError(255, $e->getMessage()),
-                    ));
-                    continue;
-                }
+            try {
+                $request = RequestMessageFactory::fromRequest($request);
+            } catch (CouldNotCreateMessage $e) {
+                $transmitter->transmit(new ResponseMessage(
+                    $request->body()['id'] ?? 0,
+                    [],
+                    new ResponseError(255, $e->getMessage()),
+                ));
+                continue;
+            }
 
-                // initialize the dispatcher with the initialize parameters
-                // (for example to allow a container to boot with the client
-                // capabilities)
-                if (null === $dispatcher) {
-                    $dispatcher = $this->dispatcherFactory->create(
-                        $transmitter,
-                        $this->initializer->provideInitializeParams($request)
-                    );
-                }
+            // initialize the dispatcher with the initialize parameters
+            // (for example to allow a container to boot with the client
+            // capabilities)
+            if (null === $dispatcher) {
+                $dispatcher = $this->dispatcherFactory->create(
+                    $transmitter,
+                    $this->initializer->provideInitializeParams($request)
+                );
+            }
 
-                $this->dispatchRequest($transmitter, $dispatcher, $connection, $request);
-            };
-        });
+            $this->dispatchRequest($transmitter, $dispatcher, $connection, $request);
+        };
     }
 
     private function dispatchRequest(MessageTransmitter $transmitter, Dispatcher $dispatcher, Connection $connection, Message $request): void
     {
-        \Amp\asyncCall(function () use ($transmitter, $request, $dispatcher, $connection) {
+        AsyncCall::start(function () use ($transmitter, $request, $dispatcher, $connection): void {
             try {
-                $response = yield $dispatcher->dispatch($request);
+                $response = $dispatcher->dispatch($request);
             } catch (ExitSession $e) {
                 $connection->stream()->end();
 

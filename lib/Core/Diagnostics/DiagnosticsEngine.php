@@ -2,26 +2,24 @@
 
 namespace Phpactor\LanguageServer\Core\Diagnostics;
 
+use Amp\Cancellation;
 use Amp\CancelledException;
-use Amp\Success;
 use Phpactor\LanguageServerProtocol\Diagnostic;
 use Phpactor\LanguageServer\Core\Server\ClientApi;
-use Amp\Promise;
-use Amp\CancellationToken;
-use Amp\Deferred;
+use Amp\DeferredFuture;
 use Phpactor\LanguageServerProtocol\TextDocumentItem;
 use Psr\Log\LoggerInterface;
 use Throwable;
-use function Amp\asyncCall;
+use Phpactor\LanguageServer\Core\AsyncCall;
 use function Amp\delay;
 use Exception;
 
 class DiagnosticsEngine
 {
     /**
-     * @var Deferred<null>
+     * @var DeferredFuture<null>
      */
-    private Deferred $deferred;
+    private DeferredFuture $deferred;
 
     private ?TextDocumentItem $waiting = null;
 
@@ -31,7 +29,7 @@ class DiagnosticsEngine
     private array $diagnostics = [];
 
     /**
-     * @var array<string,Deferred<bool>>
+     * @var array<string,DeferredFuture<bool>>
      */
     private array $locks = [];
 
@@ -42,7 +40,7 @@ class DiagnosticsEngine
      */
     public function __construct(private ClientApi $clientApi, private LoggerInterface $logger, private array $providers, private int $sleepTime = 1000)
     {
-        $this->deferred = new Deferred();
+        $this->deferred = new DeferredFuture();
         $this->providers = $providers;
         $this->clientApi = $clientApi;
         $this->sleepTime = $sleepTime;
@@ -58,108 +56,103 @@ class DiagnosticsEngine
         );
     }
 
-    /**
-     * @return Promise<bool>
-     */
-    public function run(CancellationToken $token): Promise
+    public function run(?Cancellation $token = null): void
     {
-        return \Amp\call(function () use ($token) {
-            while (true) {
-                try {
-                    $token->throwIfRequested();
-                } catch (CancelledException $cancelled) {
-                    return;
-                }
+        while (true) {
+            try {
+                $token?->throwIfRequested();
+            } catch (CancelledException $cancelled) {
+                return;
+            }
 
-                yield $this->awaitNextDocument();
+            $this->awaitNextDocument();
 
-                $beforeDocument = $this->waiting;
-                $gracePeriod = abs($this->sleepTime - ((microtime(true) - $this->lastUpdatedAt) * 1000));
-                yield delay(intval($gracePeriod));
+            $beforeDocument = $this->waiting;
+            $gracePeriod = abs($this->sleepTime - ((microtime(true) - $this->lastUpdatedAt) * 1000));
+            delay(intval($gracePeriod) / 1000);
 
-                if ($beforeDocument !== $this->waiting) {
+            if ($beforeDocument !== $this->waiting) {
+                continue;
+            }
+
+            $textDocument = $this->waiting;
+            $this->waiting = null;
+            // allow the next document update to resolve
+            $this->deferred = new DeferredFuture();
+
+            // should never happen
+            if ($textDocument === null) {
+                continue;
+            }
+
+            // reset diagnostics for this document
+            $this->clientApi->diagnostics()->publishDiagnostics(
+                $textDocument->uri,
+                $textDocument->version,
+                [],
+            );
+            $this->diagnostics[$textDocument->uri] = [];
+
+            $crashedProviders = [];
+
+            foreach ($this->providers as $providerId => $provider) {
+                if (in_array($providerId, $crashedProviders)) {
                     continue;
                 }
 
-                $textDocument = $this->waiting;
-                $this->waiting = null;
-                // allow the next document update to resolve
-                $this->deferred = new Deferred();
+                AsyncCall::start(function () use ($providerId, $provider, $token, $textDocument, &$crashedProviders): void {
+                    $start = microtime(true);
 
-                // should never happen
-                if ($textDocument === null) {
-                    continue;
-                }
+                    $this->awaitProviderLock($providerId);
 
-                // reset diagnostics for this document
-                $this->clientApi->diagnostics()->publishDiagnostics(
-                    $textDocument->uri,
-                    $textDocument->version,
-                    [],
-                );
-                $this->diagnostics[$textDocument->uri] = [];
-
-                $crashedProviders = [];
-
-                foreach ($this->providers as $providerId => $provider) {
-                    if (in_array($providerId, $crashedProviders)) {
-                        continue;
+                    if (!$this->isDocumentCurrent($textDocument)) {
+                        return;
                     }
 
-                    asyncCall(function () use ($providerId, $provider, $token, $textDocument, &$crashedProviders) {
-                        $start = microtime(true);
+                    $this->locks[$providerId] = new DeferredFuture();
 
-                        yield $this->awaitProviderLock($providerId);
+                    try {
+                        /** @var Diagnostic[] $diagnostics */
+                        $diagnostics = $provider->provideDiagnostics($textDocument, $token) ;
+                    } catch (Throwable $e) {
+                        $message = sprintf('Diagnostic provider "%s" errored with "%s", removing from pool', $providerId, $e->getMessage());
+                        $this->clientApi->window()->showMessage()->warning($message);
+                        $this->logger->error($message, [
+                            'stack' => (new Exception())->getTraceAsString()
+                        ]);
+                        $crashedProviders[$providerId] = true;
+                        return;
+                    }
 
-                        if (!$this->isDocumentCurrent($textDocument)) {
-                            return;
-                        }
+                    if (isset($this->locks[$providerId])) {
+                        $lock = $this->locks[$providerId];
+                        unset($this->locks[$providerId]);
+                        $lock->complete(true);
+                    }
 
-                        $this->locks[$providerId] = new Deferred();
+                    if (!$diagnostics) {
+                        return;
+                    }
 
-                        try {
-                            /** @var Diagnostic[] $diagnostics */
-                            $diagnostics = yield $provider->provideDiagnostics($textDocument, $token) ;
-                        } catch (Throwable $e) {
-                            $message = sprintf('Diagnostic provider "%s" errored with "%s", removing from pool', $providerId, $e->getMessage());
-                            $this->clientApi->window()->showMessage()->warning($message);
-                            $this->logger->error($message, [
-                                'stack' => (new Exception())->getTraceAsString()
-                            ]);
-                            $crashedProviders[$providerId] = true;
-                            return;
-                        }
+                    $elapsed = (int)round((microtime(true) - $start) / 1000);
 
-                        if (isset($this->locks[$providerId])) {
-                            $lock = $this->locks[$providerId];
-                            unset($this->locks[$providerId]);
-                            $lock->resolve(true);
-                        }
+                    if (!$this->isDocumentCurrent($textDocument)) {
+                        return;
+                    }
 
-                        if (!$diagnostics) {
-                            return;
-                        }
+                    $this->diagnostics[$textDocument->uri] = array_merge(
+                        $this->diagnostics[$textDocument->uri] ?? [],
+                        $diagnostics
+                    );
 
-                        $elapsed = (int)round((microtime(true) - $start) / 1000);
-
-                        if (!$this->isDocumentCurrent($textDocument)) {
-                            return;
-                        }
-
-                        $this->diagnostics[$textDocument->uri] = array_merge(
-                            $this->diagnostics[$textDocument->uri] ?? [],
-                            $diagnostics
-                        );
-
-                        $this->clientApi->diagnostics()->publishDiagnostics(
-                            $textDocument->uri,
-                            $textDocument->version,
-                            $this->diagnostics[$textDocument->uri]
-                        );
-                    });
-                }
+                    $this->clientApi->diagnostics()->publishDiagnostics(
+                        $textDocument->uri,
+                        $textDocument->version,
+                        $this->diagnostics[$textDocument->uri]
+                    );
+                });
             }
-        });
+        }
     }
 
     public function enqueue(TextDocumentItem $textDocument): void
@@ -180,7 +173,7 @@ class DiagnosticsEngine
         }
 
         // otherwise trigger the lint process
-        $this->deferred->resolve();
+        $this->deferred->complete();
     }
 
     private function isDocumentCurrent(TextDocumentItem $textDocument): bool
@@ -188,28 +181,21 @@ class DiagnosticsEngine
         return $this->waiting === null;
     }
 
-    /**
-     * @return Promise<bool>
-     */
-    private function awaitProviderLock(int|string $providerId): Promise
+    private function awaitProviderLock(int|string $providerId): void
     {
         if (!array_key_exists($providerId, $this->locks)) {
-            return new Success(true);
+            return;
         }
 
-        return $this->locks[$providerId]->promise();
-
+        $this->locks[$providerId]->getFuture()->await();
     }
 
-    /**
-     * @return Promise<null>
-     */
-    private function awaitNextDocument(): Promise
+    private function awaitNextDocument(): void
     {
         if ($this->waiting) {
-            return new Success();
+            return;
         }
 
-        return $this->deferred->promise();
+        $this->deferred->getFuture()->await();
     }
 }

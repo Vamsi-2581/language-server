@@ -3,8 +3,6 @@
 namespace Phpactor\LanguageServer\Middleware;
 
 use Amp\CancelledException;
-use Amp\Promise;
-use Amp\Success;
 use Phpactor\LanguageServer\Core\Handler\HandlerNotFound;
 use Phpactor\LanguageServer\Core\Middleware\Middleware;
 use Phpactor\LanguageServer\Core\Rpc\ErrorCodes;
@@ -16,7 +14,6 @@ use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Core\Server\Exception\ServerControl;
 use Psr\Log\LoggerInterface;
 use Throwable;
-use function Amp\call;
 
 class ErrorHandlingMiddleware implements Middleware
 {
@@ -24,50 +21,48 @@ class ErrorHandlingMiddleware implements Middleware
     {
     }
 
-    public function process(Message $request, RequestHandler $handler): Promise
+    public function process(Message $request, RequestHandler $handler): ?ResponseMessage
     {
-        return call(function () use ($request, $handler) {
-            try {
-                return yield $handler->handle($request);
-            } catch (ServerControl $exception) {
-                throw $exception;
-            } catch (CancelledException $cancelled) {
-                if (!$request instanceof RequestMessage) {
-                    return new Success(null);
-                }
-
-                return new Success(new ResponseMessage(
-                    $request->id,
-                    null,
-                    new ResponseError(
-                        ErrorCodes::RequestCancelled,
-                        sprintf('Request %d (%s) cancelled', $request->id, $request->method),
-                    )
-                ));
-            } catch (Throwable $error) {
-                $message = sprintf('Exception [%s] %s', $error::class, $error->getMessage());
-                $this->logger->error(sprintf(
-                    'Error when handling "%s" (%s): %s',
-                    $request::class,
-                    json_encode($request),
-                    $message
-                ));
-
-                if (!$request instanceof RequestMessage) {
-                    return new Success(null);
-                }
-
-                return new Success(new ResponseMessage(
-                    $request->id,
-                    null,
-                    new ResponseError(
-                        $this->resolveErrorCode($error),
-                        sprintf('%s at %s#%s', $message, $error->getFile(), $error->getLine()),
-                        $error->getTraceAsString()
-                    )
-                ));
+        try {
+            return $handler->handle($request);
+        } catch (ServerControl $exception) {
+            throw $exception;
+        } catch (CancelledException $cancelled) {
+            if (!$request instanceof RequestMessage) {
+                return null;
             }
-        });
+
+            return new ResponseMessage(
+                $request->id,
+                null,
+                new ResponseError(
+                    ErrorCodes::RequestCancelled,
+                    sprintf('Request %d (%s) cancelled', $request->id, $request->method),
+                )
+            );
+        } catch (Throwable $error) {
+            $message = sprintf('Exception [%s] %s', $error::class, $error->getMessage());
+            $this->logger->error(sprintf(
+                'Error when handling "%s" (%s): %s',
+                $request::class,
+                json_encode($request),
+                $message
+            ));
+
+            if (!$request instanceof RequestMessage) {
+                return null;
+            }
+
+            return new ResponseMessage(
+                $request->id,
+                null,
+                new ResponseError(
+                    $this->resolveErrorCode($error),
+                    sprintf('%s at %s#%s', $message, $error->getFile(), $error->getLine()),
+                    $error->getTraceAsString()
+                )
+            );
+        }
     }
 
     private function resolveErrorCode(Throwable $error): int

@@ -2,9 +2,7 @@
 
 namespace Phpactor\LanguageServer\Core\Handler;
 
-use Amp\CancellationTokenSource;
-use Amp\Promise;
-use Amp\Success;
+use Amp\DeferredCancellation;
 use Phpactor\LanguageServer\Core\Dispatcher\ArgumentResolver;
 use Phpactor\LanguageServer\Core\Dispatcher\ArgumentResolver\PassThroughArgumentResolver;
 use Phpactor\LanguageServer\Core\Rpc\Message;
@@ -18,7 +16,7 @@ use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 final class HandlerMethodRunner implements MethodRunner
 {
     /**
-     * @var array<string|int, CancellationTokenSource>
+     * @var array<string|int, DeferredCancellation>
      */
     private array $cancellations = [];
 
@@ -30,10 +28,7 @@ final class HandlerMethodRunner implements MethodRunner
     ) {
     }
 
-    /**
-     * @return Promise<ResponseMessage|null>
-     */
-    public function dispatch(Message $request): Promise
+    public function dispatch(Message $request): ?ResponseMessage
     {
         if (
             !$request instanceof NotificationMessage &&
@@ -45,37 +40,26 @@ final class HandlerMethodRunner implements MethodRunner
             ));
         }
 
-        return \Amp\call(function () use ($request) {
-            $handler = $this->handlers->get($request->method);
-            $method = $this->resolver->resolveHandlerMethod($handler, $request->method);
+        $handler = $this->handlers->get($request->method);
+        $method = $this->resolver->resolveHandlerMethod($handler, $request->method);
 
-            $cancellationTokenSource = new CancellationTokenSource();
+        $cancellationTokenSource = new DeferredCancellation();
 
-            // we only cancel requests (that have IDs) and not notifications
-            if ($request instanceof RequestMessage) {
-                $this->cancellations[$request->id] = $cancellationTokenSource;
-            }
+        // we only cancel requests (that have IDs) and not notifications
+        if ($request instanceof RequestMessage) {
+            $this->cancellations[$request->id] = $cancellationTokenSource;
+        }
 
-            $args = array_values($this->argumentResolver->resolveArguments($handler, $method, $request));
-            $args[] = $cancellationTokenSource->getToken();
+        $args = array_values($this->argumentResolver->resolveArguments($handler, $method, $request));
+        $args[] = $cancellationTokenSource->getCancellation();
 
-            $promise = $handler->$method(...$args) ?? new Success(null);
+        $result = $handler->$method(...$args);
 
-            if (!$promise instanceof Promise) {
-                throw new RuntimeException(sprintf(
-                    'Handler "%s:%s" must return instance of Amp\\Promise, got "%s"',
-                    $handler::class,
-                    $method,
-                    get_debug_type($promise)
-                ));
-            }
+        if (!$request instanceof RequestMessage) {
+            return null;
+        }
 
-            if (!$request instanceof RequestMessage) {
-                return null;
-            }
-
-            return new ResponseMessage($request->id, yield $promise);
-        });
+        return new ResponseMessage($request->id, $result);
     }
 
     /**
@@ -93,7 +77,7 @@ final class HandlerMethodRunner implements MethodRunner
         }
 
         $tokenSource = $this->cancellations[$id];
-        assert($tokenSource instanceof CancellationTokenSource);
+        assert($tokenSource instanceof DeferredCancellation);
         $tokenSource->cancel();
     }
 }

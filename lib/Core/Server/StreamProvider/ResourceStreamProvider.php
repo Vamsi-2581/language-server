@@ -2,8 +2,6 @@
 
 namespace Phpactor\LanguageServer\Core\Server\StreamProvider;
 
-use Amp\Promise;
-use Amp\Success;
 use Phpactor\LanguageServer\Core\Server\Stream\ResourceDuplexStream;
 use Psr\Log\LoggerInterface;
 
@@ -15,22 +13,19 @@ final class ResourceStreamProvider implements StreamProvider
     {
     }
 
-    /**
-     * @return Success<null|Connection>
-     */
-    public function accept(): Promise
+    public function accept(): ?Connection
     {
         // resource connections are valid only for
         // the length of the client connnection
         if ($this->provided) {
-            return new Success(null);
+            return null;
         }
 
         $this->provided = true;
 
         $this->logger->info('Listening on STDIO');
 
-        return new Success(new Connection('stdio', $this->duplexStream));
+        return new Connection('stdio', $this->duplexStream);
     }
 
     public function close(): void

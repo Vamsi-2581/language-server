@@ -2,12 +2,12 @@
 
 namespace Phpactor\LanguageServer\Middleware;
 
-use Amp\Promise;
 use Phpactor\LanguageServer\Core\Middleware\Middleware;
 use Phpactor\LanguageServer\Core\Middleware\RequestHandler;
 use Phpactor\LanguageServer\Core\Rpc\Message;
 use Phpactor\LanguageServer\Core\Rpc\NotificationMessage;
 use Phpactor\LanguageServer\Core\Rpc\RequestMessage;
+use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 
 class MethodAliasMiddleware implements Middleware
 {
@@ -18,7 +18,7 @@ class MethodAliasMiddleware implements Middleware
     /**
      * {@inheritDoc}
      */
-    public function process(Message $request, RequestHandler $handler): Promise
+    public function process(Message $request, RequestHandler $handler): ?ResponseMessage
     {
         if (!$request instanceof RequestMessage && !$request instanceof NotificationMessage) {
             return $handler->handle($request);

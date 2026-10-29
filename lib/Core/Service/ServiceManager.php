@@ -2,18 +2,16 @@
 
 namespace Phpactor\LanguageServer\Core\Service;
 
-use Amp\CancellationTokenSource;
-use Amp\Promise;
-
+use Amp\DeferredCancellation;
+use Phpactor\LanguageServer\Core\AsyncCall;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
-use function Amp\asyncCall;
 
 class ServiceManager
 {
     /**
-     * @var CancellationTokenSource[]
+     * @var DeferredCancellation[]
      */
     private array $cancellations = [];
 
@@ -57,23 +55,13 @@ class ServiceManager
             ));
         }
         
-        $cancel = new CancellationTokenSource();
+        $cancel = new DeferredCancellation();
         $this->cancellations[$serviceName] = $cancel;
-        $token = $cancel->getToken();
+        $token = $cancel->getCancellation();
 
-        asyncCall(function () use ($provider, $serviceName, $token) {
-            $promise = $provider->$serviceName($token);
-        
-            if (!$promise instanceof Promise) {
-                throw new RuntimeException(sprintf(
-                    'Service method "%s" must return a Promise, got "%s"',
-                    $provider::class . '::' . $serviceName,
-                    get_debug_type($promise)
-                ));
-            }
-        
+        AsyncCall::start(function () use ($provider, $serviceName, $token): void {
             try {
-                yield $promise;
+                $provider->$serviceName($token);
             } catch (Throwable $error) {
                 $this->logger->error(sprintf(
                     'Error in service "%s" "%s:%s": %s',
@@ -99,7 +87,7 @@ class ServiceManager
         }
 
         $tokenSource = $this->cancellations[$serviceName];
-        assert($tokenSource instanceof CancellationTokenSource);
+        assert($tokenSource instanceof DeferredCancellation);
         $tokenSource->cancel();
         unset($this->cancellations[$serviceName]);
     }

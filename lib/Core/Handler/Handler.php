@@ -23,18 +23,18 @@ interface Handler
      *         ];
      *     }
      *
-     *     public function didOpen(DidOpenTextDocumentParams $params): Promise
+     *     public function didOpen(DidOpenTextDocumentParams $params): void
      *     {
-     *         return new Success(null);
      *     }
      *
-     *     public function complete(CompletionParams $params, CancellationToken $cancel): Promise
+     *     public function complete(CompletionParams $params, ?Cancellation $cancellation = null): CompletionList
      *     {
-     *         return new Success(new CompletionList(// ...));
+     *         return new CompletionList(// ...);
      *     }
      * ```
      *
-     * Each method MUST return an `Amp\Promise`.
+     * Methods may do anything a normal PHP method can do: the server runs them
+     * in a fiber, so blocking on I/O suspends only this request.
      *
      * The arguments passed by the RPC call depend on the `ArgumentResolver`
      * implementation used by the `HandlerMethodRunner`.

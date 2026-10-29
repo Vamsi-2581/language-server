@@ -2,7 +2,6 @@
 
 namespace Phpactor\LanguageServer\Handler\Workspace;
 
-use Amp\Promise;
 use Phpactor\LanguageServerProtocol\ExecuteCommandOptions;
 use Phpactor\LanguageServerProtocol\ExecuteCommandParams;
 use Phpactor\LanguageServerProtocol\ServerCapabilities;
@@ -26,10 +25,7 @@ class CommandHandler implements Handler, CanRegisterCapabilities
         ];
     }
 
-    /**
-     * @return Promise<mixed|null>
-     */
-    public function executeCommand(ExecuteCommandParams $params): Promise
+    public function executeCommand(ExecuteCommandParams $params): mixed
     {
         return $this->dispatcher->dispatch($params->command, $params->arguments ?? []);
     }

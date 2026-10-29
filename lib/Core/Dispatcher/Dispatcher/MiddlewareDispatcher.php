@@ -2,11 +2,11 @@
 
 namespace Phpactor\LanguageServer\Core\Dispatcher\Dispatcher;
 
-use Amp\Promise;
 use Phpactor\LanguageServer\Core\Dispatcher\Dispatcher;
 use Phpactor\LanguageServer\Core\Middleware\Middleware;
 use Phpactor\LanguageServer\Core\Middleware\RequestHandler;
 use Phpactor\LanguageServer\Core\Rpc\Message;
+use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 
 final class MiddlewareDispatcher implements Dispatcher
 {
@@ -23,7 +23,7 @@ final class MiddlewareDispatcher implements Dispatcher
     /**
      * {@inheritDoc}
      */
-    public function dispatch(Message $request): Promise
+    public function dispatch(Message $request): ?ResponseMessage
     {
         $handler = new RequestHandler($this->middleware);
         return $handler->handle($request);

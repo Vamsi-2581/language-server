@@ -2,17 +2,16 @@
 
 namespace Phpactor\LanguageServer\Core\Diagnostics;
 
-use Amp\CancellationToken;
-use Amp\Promise;
+use Amp\Cancellation;
 use Phpactor\LanguageServerProtocol\Diagnostic;
 use Phpactor\LanguageServerProtocol\TextDocumentItem;
 
 interface DiagnosticsProvider
 {
     /**
-     * @return Promise<array<Diagnostic>>
+     * @return array<Diagnostic>
      */
-    public function provideDiagnostics(TextDocumentItem $textDocument, CancellationToken $cancel): Promise;
+    public function provideDiagnostics(TextDocumentItem $textDocument, ?Cancellation $cancel = null): array;
 
     public function name(): string;
 }

@@ -2,9 +2,7 @@
 
 namespace Phpactor\LanguageServer\Core\Server\Client;
 
-use Amp\Promise;
 use InvalidArgumentException;
-use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Core\Server\RpcClient;
 use Phpactor\LanguageServer\WorkDoneProgress\WorkDoneToken;
 
@@ -14,16 +12,11 @@ final class WorkDoneProgressClient
     {
     }
 
-    /**
-     * @return Promise<ResponseMessage>
-     */
-    public function create(WorkDoneToken $token): Promise
+    public function create(WorkDoneToken $token): void
     {
-        return \Amp\call(function () use ($token) {
-            return yield $this->client->request('window/workDoneProgress/create', [
-                'token' => (string) $token,
-            ]);
-        });
+        $this->client->request('window/workDoneProgress/create', [
+            'token' => (string) $token,
+        ]);
     }
 
     public function begin(

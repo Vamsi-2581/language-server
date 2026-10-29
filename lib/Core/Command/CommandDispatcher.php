@@ -2,7 +2,6 @@
 
 namespace Phpactor\LanguageServer\Core\Command;
 
-use Amp\Promise;
 use RuntimeException;
 
 /**
@@ -30,10 +29,8 @@ class CommandDispatcher
 
     /**
      * @param array<int,mixed> $args
-     *
-     * @return Promise<mixed>
      */
-    public function dispatch(string $command, array $args = []): Promise
+    public function dispatch(string $command, array $args = []): mixed
     {
         if (!isset($this->commandMap[$command])) {
             throw new RuntimeException(sprintf(

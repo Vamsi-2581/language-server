@@ -2,8 +2,6 @@
 
 namespace Phpactor\LanguageServer\Handler\System;
 
-use Amp\Promise;
-use Amp\Success;
 use Phpactor\LanguageServer\Core\Handler\Handler;
 use Phpactor\LanguageServer\Core\Server\ClientApi;
 use Phpactor\LanguageServer\Core\Server\ServerStatsReader;
@@ -23,10 +21,7 @@ class StatsHandler implements Handler
         ];
     }
 
-    /**
-     * @return Promise<null>
-     */
-    public function status(): Promise
+    public function status(): void
     {
         $this->client->window()->showMessage()->info(
             implode(', ', [
@@ -37,7 +32,5 @@ class StatsHandler implements Handler
                 'mem: ' . number_format(memory_get_peak_usage()) . 'b',
             ])
         );
-
-        return new Success(null);
     }
 }

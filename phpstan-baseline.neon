@@ -136,11 +136,6 @@ parameters:
 			path: lib/Core/Server/Transmitter/LspMessageSerializer.php
 
 		-
-			message: "#^Method Phpactor\\\\LanguageServer\\\\Handler\\\\System\\\\ServiceHandler\\:\\:runningServices\\(\\) return type has no value type specified in iterable type array\\.$#"
-			count: 1
-			path: lib/Handler/System/ServiceHandler.php
-
-		-
 			message: "#^Method Phpactor\\\\LanguageServer\\\\Listener\\\\DidChangeWatchedFilesListener\\:\\:__construct\\(\\) has parameter \\$globPatterns with no value type specified in iterable type array\\.$#"
 			count: 1
 			path: lib/Listener/DidChangeWatchedFilesListener.php

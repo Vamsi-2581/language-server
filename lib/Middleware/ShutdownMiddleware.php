@@ -2,7 +2,6 @@
 
 namespace Phpactor\LanguageServer\Middleware;
 
-use Amp\Success;
 use Phpactor\LanguageServer\Core\Middleware\Middleware;
 use Phpactor\LanguageServer\Core\Middleware\RequestHandler;
 use Phpactor\LanguageServer\Core\Rpc\ErrorCodes;
@@ -12,13 +11,10 @@ use Phpactor\LanguageServer\Core\Rpc\RequestMessage;
 use Phpactor\LanguageServer\Core\Rpc\ResponseError;
 use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Core\Server\Exception\ExitSession;
-use Amp\Delayed;
 use Phpactor\LanguageServer\Event\WillShutdown;
-use Amp\Promise;
-use function Amp\call;
 use Phpactor\LanguageServer\Adapter\Psr\NullEventDispatcher;
-
 use Psr\EventDispatcher\EventDispatcherInterface;
+use function Amp\delay;
 
 final class ShutdownMiddleware implements Middleware
 {
@@ -33,7 +29,7 @@ final class ShutdownMiddleware implements Middleware
     ) {
     }
 
-    public function process(Message $request, RequestHandler $handler): Promise
+    public function process(Message $request, RequestHandler $handler): ?ResponseMessage
     {
         if ($request instanceof NotificationMessage) {
             if ($request->method === self::METHOD_EXIT) {
@@ -41,20 +37,20 @@ final class ShutdownMiddleware implements Middleware
             }
 
             if ($this->shuttingDown) {
-                return new Success(null);
+                return null;
             }
         }
 
         if ($request instanceof RequestMessage) {
             if ($this->shuttingDown) {
-                return new Success(new ResponseMessage(
+                return new ResponseMessage(
                     $request->id,
                     null,
                     new ResponseError(
                         ErrorCodes::InvalidRequest,
                         'Server is currently shutting down, cannot serve requests'
                     )
-                ));
+                );
             }
 
             if ($request->method === self::METHOD_SHUTDOWN) {
@@ -66,18 +62,14 @@ final class ShutdownMiddleware implements Middleware
         return $handler->handle($request);
     }
 
-    /**
-     * @return Promise<null>
-     */
-    public function shutdown(RequestMessage $request): Promise
+    public function shutdown(RequestMessage $request): ResponseMessage
     {
-        return call(function () use ($request) {
-            $this->eventDispatcher->dispatch(new WillShutdown());
-            yield new Delayed($this->gracePeriod);
-            return new ResponseMessage(
-                $request->id,
-                null
-            );
-        });
+        $this->eventDispatcher->dispatch(new WillShutdown());
+        delay($this->gracePeriod / 1000);
+
+        return new ResponseMessage(
+            $request->id,
+            null
+        );
     }
 }

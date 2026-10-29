@@ -2,7 +2,6 @@
 
 namespace Phpactor\LanguageServer\Core\Server\Client;
 
-use Amp\Promise;
 use DTL\Invoke\Invoke;
 use Phpactor\LanguageServerProtocol\ApplyWorkspaceEditResult;
 use Phpactor\LanguageServerProtocol\WorkspaceEdit;
@@ -14,39 +13,29 @@ final class WorkspaceClient
     {
     }
 
-    /**
-     * @return Promise<ApplyWorkspaceEditResult>
-     */
-    public function applyEdit(WorkspaceEdit $edit, ?string $label = null): Promise
+    public function applyEdit(WorkspaceEdit $edit, ?string $label = null): ApplyWorkspaceEditResult
     {
-        return \Amp\call(function () use ($edit, $label) {
-            $response = yield $this->client->request(
-                'workspace/applyEdit',
-                [
-                    'edit' => $edit,
-                    'label' => $label
-                ]
-            );
+        $response = $this->client->request(
+            'workspace/applyEdit',
+            [
+                'edit' => $edit,
+                'label' => $label
+            ]
+        );
 
-            return Invoke::new(ApplyWorkspaceEditResult::class, (array)$response->result);
-        });
+        return Invoke::new(ApplyWorkspaceEditResult::class, (array)$response->result);
     }
 
-    /**
-     * @return Promise<mixed>
-     */
-    public function executeCommand(string $command, array $arguments): Promise
+    public function executeCommand(string $command, array $arguments): mixed
     {
-        return \Amp\call(function () use ($command, $arguments) {
-            $response = yield $this->client->request(
-                'workspace/executeCommand',
-                [
-                    'command' => $command,
-                    'arguments' => $arguments
-                ]
-            );
+        $response = $this->client->request(
+            'workspace/executeCommand',
+            [
+                'command' => $command,
+                'arguments' => $arguments
+            ]
+        );
 
-            return $response->result;
-        });
+        return $response->result;
     }
 }

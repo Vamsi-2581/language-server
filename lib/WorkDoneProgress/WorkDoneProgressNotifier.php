@@ -2,7 +2,6 @@
 
 namespace Phpactor\LanguageServer\WorkDoneProgress;
 
-use Amp\Promise;
 use Phpactor\LanguageServer\Core\Server\ClientApi;
 use Phpactor\LanguageServer\Core\Server\Client\WorkDoneProgressClient;
 
@@ -18,9 +17,9 @@ final class WorkDoneProgressNotifier implements ProgressNotifier
     /**
      * {@inheritDoc}
      */
-    public function create(WorkDoneToken $token): Promise
+    public function create(WorkDoneToken $token): void
     {
-        return $this->api->create($token);
+        $this->api->create($token);
     }
 
     /**

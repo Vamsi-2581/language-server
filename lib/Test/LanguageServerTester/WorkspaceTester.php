@@ -2,7 +2,7 @@
 
 namespace Phpactor\LanguageServer\Test\LanguageServerTester;
 
-use Amp\Promise;
+use Amp\Future;
 use Phpactor\LanguageServerProtocol\ExecuteCommandParams;
 use Phpactor\LanguageServer\Test\LanguageServerTester;
 
@@ -13,9 +13,9 @@ class WorkspaceTester
     }
 
     /**
-     * @return Promise<mixed>
+     * @return Future<mixed>
      */
-    public function executeCommand(string $command, ?array $args = []): Promise
+    public function executeCommand(string $command, ?array $args = []): Future
     {
         return $this->tester->request(
             'workspace/executeCommand',

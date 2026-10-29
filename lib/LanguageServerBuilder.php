@@ -2,8 +2,8 @@
 
 namespace Phpactor\LanguageServer;
 
-use Amp\ByteStream\ResourceInputStream;
-use Amp\ByteStream\ResourceOutputStream;
+use Amp\ByteStream\ReadableResourceStream;
+use Amp\ByteStream\WritableResourceStream;
 use Phpactor\LanguageServerProtocol\ClientCapabilities;
 use Phpactor\LanguageServerProtocol\InitializeParams;
 use Phpactor\LanguageServer\Core\Dispatcher\DispatcherFactory;
@@ -97,8 +97,8 @@ final class LanguageServerBuilder
         } else {
             $provider = new ResourceStreamProvider(
                 new ResourceDuplexStream(
-                    new ResourceInputStream(STDIN),
-                    new ResourceOutputStream(STDOUT)
+                    new ReadableResourceStream(STDIN),
+                    new WritableResourceStream(STDOUT)
                 ),
                 $this->logger
             );

@@ -2,8 +2,6 @@
 
 namespace Phpactor\LanguageServer\Handler\System;
 
-use Amp\Promise;
-use Amp\Success;
 use Phpactor\LanguageServer\Core\Handler\Handler;
 use Phpactor\LanguageServer\Core\Server\ClientApi;
 use Phpactor\LanguageServer\Core\Service\ServiceManager;
@@ -37,15 +35,15 @@ class ServiceHandler implements Handler
     }
 
     /**
-     * @return Promise<array>
+     * @return array<string>
      */
-    public function runningServices(): Promise
+    public function runningServices(): array
     {
         $this->client->window()->showMessage()->info(sprintf(
             'Running services: "%s"',
             implode('", "', $this->manager->runningServices())
         ));
 
-        return new Success($this->manager->runningServices());
+        return $this->manager->runningServices();
     }
 }

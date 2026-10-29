@@ -2,11 +2,9 @@
 
 namespace Phpactor\LanguageServer\Core\Diagnostics;
 
-use Amp\CancellationToken;
-use Amp\Promise;
+use Amp\Cancellation;
 use Phpactor\LanguageServerProtocol\TextDocumentItem;
 use Psr\Log\LoggerInterface;
-use function Amp\call;
 use Throwable;
 
 class AggregateDiagnosticsProvider implements DiagnosticsProvider
@@ -24,39 +22,37 @@ class AggregateDiagnosticsProvider implements DiagnosticsProvider
     /**
      * {@inheritDoc}
      */
-    public function provideDiagnostics(TextDocumentItem $textDocument, CancellationToken $cancel): Promise
+    public function provideDiagnostics(TextDocumentItem $textDocument, ?Cancellation $cancel = null): array
     {
-        return call(function () use ($textDocument, $cancel) {
-            $diagnostics = [];
-            foreach ($this->providers as $provider) {
-                try {
-                    $start = microtime(true);
-                    $diagnostics = array_merge(
-                        $diagnostics,
-                        yield $provider->provideDiagnostics($textDocument, $cancel)
-                    );
-                    if ($cancel->isRequested()) {
-                        $this->logger->info('Diagnostics cancelled');
-                        return $diagnostics;
-                    }
-                    $this->logger->debug(sprintf(
-                        'Diagnostic finsihed in "%s" (%s)',
-                        number_format(microtime(true) - $start, 2),
-                        $provider::class
-                    ));
-                } catch (Throwable $throwable) {
-                    $this->logger->error(sprintf(
-                        'Diagnostic error from provider "%s": %s',
-                        $provider::class,
-                        $throwable->getMessage()
-                    ), [
-                        'trace' => $throwable->getTraceAsString()
-                    ]);
+        $diagnostics = [];
+        foreach ($this->providers as $provider) {
+            try {
+                $start = microtime(true);
+                $diagnostics = array_merge(
+                    $diagnostics,
+                    $provider->provideDiagnostics($textDocument, $cancel)
+                );
+                if ($cancel?->isRequested()) {
+                    $this->logger->info('Diagnostics cancelled');
+                    return $diagnostics;
                 }
+                $this->logger->debug(sprintf(
+                    'Diagnostic finsihed in "%s" (%s)',
+                    number_format(microtime(true) - $start, 2),
+                    $provider::class
+                ));
+            } catch (Throwable $throwable) {
+                $this->logger->error(sprintf(
+                    'Diagnostic error from provider "%s": %s',
+                    $provider::class,
+                    $throwable->getMessage()
+                ), [
+                    'trace' => $throwable->getTraceAsString()
+                ]);
             }
+        }
 
-            return $diagnostics;
-        });
+        return $diagnostics;
     }
 
     /**

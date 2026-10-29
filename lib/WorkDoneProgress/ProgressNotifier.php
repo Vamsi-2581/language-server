@@ -2,15 +2,9 @@
 
 namespace Phpactor\LanguageServer\WorkDoneProgress;
 
-use Amp\Promise;
-use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
-
 interface ProgressNotifier
 {
-    /**
-     * @return Promise<ResponseMessage>
-     */
-    public function create(WorkDoneToken $token): Promise;
+    public function create(WorkDoneToken $token): void;
 
     /**
      * @param int|null $percentage Percentage comprised between 0 and 100

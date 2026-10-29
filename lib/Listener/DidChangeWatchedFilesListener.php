@@ -10,7 +10,7 @@ use Phpactor\LanguageServer\Core\Server\ClientApi;
 use Phpactor\LanguageServer\Event\Initialized;
 use Psr\EventDispatcher\ListenerProviderInterface;
 use Ramsey\Uuid\Uuid;
-use function Amp\asyncCall;
+use Phpactor\LanguageServer\Core\AsyncCall;
 
 class DidChangeWatchedFilesListener implements ListenerProviderInterface
 {
@@ -36,8 +36,8 @@ class DidChangeWatchedFilesListener implements ListenerProviderInterface
             return;
         }
 
-        asyncCall(function () {
-            yield $this->client->client()->registerCapability(
+        AsyncCall::start(function (): void {
+            $this->client->client()->registerCapability(
                 new Registration(
                     Uuid::uuid4()->__toString(),
                     'workspace/didChangeWatchedFiles',

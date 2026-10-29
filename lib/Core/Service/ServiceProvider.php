@@ -7,8 +7,9 @@ interface ServiceProvider
     /**
      * Return a list of methods which should be registered as services.
      *
-     * Services are asynchronous co-routines will be started when the
-     * language server is initialized.
+     * Services are started when the language server is initialized and run
+     * until the given cancellation is requested. Each service method blocks
+     * for as long as it wants to run.
      *
      * For example:
      *
@@ -20,11 +21,14 @@ interface ServiceProvider
      *         ];
      *     }
      *
-     *     public function pingService(): Promise
+     *     public function pingService(?Cancellation $cancellation = null): void
      *     {
-     *         // exit immediately
-     *         return new Success();
+     *         while (true) {
+     *             $cancellation->throwIfRequested();
+     *             delay(1);
+     *         }
      *     }
+     * ```
      *
      * @return list<string>
      */

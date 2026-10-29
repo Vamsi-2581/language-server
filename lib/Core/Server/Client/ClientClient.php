@@ -2,7 +2,6 @@
 
 namespace Phpactor\LanguageServer\Core\Server\Client;
 
-use Amp\Promise;
 use Phpactor\LanguageServerProtocol\Registration;
 use Phpactor\LanguageServerProtocol\Unregistration;
 use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
@@ -14,20 +13,14 @@ final class ClientClient
     {
     }
 
-    /**
-     * @return Promise<ResponseMessage>
-     */
-    public function registerCapability(Registration ...$registrations): Promise
+    public function registerCapability(Registration ...$registrations): ResponseMessage
     {
         return $this->client->request('client/registerCapability', [
             'registrations' => $registrations
         ]);
     }
 
-    /**
-     * @return Promise<ResponseMessage>
-     */
-    public function unregisterCapability(Unregistration ...$unregistrations): Promise
+    public function unregisterCapability(Unregistration ...$unregistrations): ResponseMessage
     {
         return $this->client->request('client/unregisterCapability', [
             'unregistrations' => $unregistrations

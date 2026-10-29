@@ -2,7 +2,7 @@
 
 namespace Phpactor\LanguageServer\Core\Server\RpcClient;
 
-use Amp\Promise;
+use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Core\Server\ResponseWatcher\TestResponseWatcher;
 use Phpactor\LanguageServer\Core\Server\RpcClient;
 use Phpactor\LanguageServer\Core\Server\Transmitter\TestMessageTransmitter;
@@ -29,7 +29,7 @@ final class TestRpcClient implements RpcClient
     /**
      * {@inheritDoc}
      */
-    public function request(string $method, array $params): Promise
+    public function request(string $method, array $params): ResponseMessage
     {
         return $this->client->request($method, $params);
     }

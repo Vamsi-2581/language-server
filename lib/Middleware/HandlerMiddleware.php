@@ -2,7 +2,6 @@
 
 namespace Phpactor\LanguageServer\Middleware;
 
-use Amp\Promise;
 use Phpactor\LanguageServer\Core\Handler\MethodRunner;
 use Phpactor\LanguageServer\Core\Middleware\RequestHandler;
 use Phpactor\LanguageServer\Core\Middleware\Middleware;
@@ -17,10 +16,7 @@ class HandlerMiddleware implements Middleware
     {
     }
 
-    /**
-     * @return Promise<ResponseMessage|null>
-     */
-    public function process(Message $request, RequestHandler $handler): Promise
+    public function process(Message $request, RequestHandler $handler): ?ResponseMessage
     {
         if (
             !$request instanceof RequestMessage &&

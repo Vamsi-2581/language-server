@@ -2,9 +2,6 @@
 
 namespace Phpactor\LanguageServer\WorkDoneProgress;
 
-use Amp\Promise;
-use Amp\Success;
-use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Core\Server\ClientApi;
 use Phpactor\LanguageServer\Core\Server\Client\MessageClient;
 
@@ -20,12 +17,8 @@ final class MessageProgressNotifier implements ProgressNotifier
     /**
      * {@inheritDoc}
      */
-    public function create(WorkDoneToken $token): Promise
+    public function create(WorkDoneToken $token): void
     {
-        return new Success(new ResponseMessage(
-            $token->__toString(),
-            null,
-        ));
     }
 
     /**

@@ -2,8 +2,6 @@
 
 namespace Phpactor\LanguageServer\Middleware;
 
-use Amp\Promise;
-use Amp\Success;
 use Phpactor\LanguageServerProtocol\InitializeResult;
 use Phpactor\LanguageServerProtocol\ServerCapabilities;
 use Phpactor\LanguageServer\Core\Handler\CanRegisterCapabilities;
@@ -38,11 +36,11 @@ class InitializeMiddleware implements Middleware
     /**
      * {@inheritDoc}
      */
-    public function process(Message $request, RequestHandler $handler): Promise
+    public function process(Message $request, RequestHandler $handler): ?ResponseMessage
     {
         if ($request instanceof NotificationMessage && $request->method === self::METHOD_INITIALIZED) {
             $this->dispatcher->dispatch(new Initialized());
-            return new Success(null);
+            return null;
         }
 
         if (!$request instanceof RequestMessage) {
@@ -70,14 +68,12 @@ class InitializeMiddleware implements Middleware
 
         $this->initialized = true;
 
-        return new Success(
-            new ResponseMessage(
-                $request->id,
-                new InitializeResult($serverCapabilities, array_merge([
-                    'name' => 'unspecified',
-                    'version' => 'unspecified',
-                ], $this->serverInfo))
-            )
+        return new ResponseMessage(
+            $request->id,
+            new InitializeResult($serverCapabilities, array_merge([
+                'name' => 'unspecified',
+                'version' => 'unspecified',
+            ], $this->serverInfo))
         );
     }
 }

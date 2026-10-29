@@ -2,8 +2,6 @@
 
 namespace Phpactor\LanguageServer\Middleware;
 
-use Amp\Promise;
-use Amp\Success;
 use Phpactor\LanguageServer\Core\Middleware\Middleware;
 use Phpactor\LanguageServer\Core\Middleware\RequestHandler;
 use Phpactor\LanguageServer\Core\Rpc\Message;
@@ -19,11 +17,11 @@ class ResponseHandlingMiddleware implements Middleware
     /**
      * {@inheritDoc}
      */
-    public function process(Message $request, RequestHandler $handler): Promise
+    public function process(Message $request, RequestHandler $handler): ?ResponseMessage
     {
         if ($request instanceof ResponseMessage) {
             $this->watcher->handle($request);
-            return new Success(null);
+            return null;
         }
 
         return $handler->handle($request);

@@ -2,11 +2,9 @@
 
 namespace Phpactor\LanguageServer\Core\CodeAction;
 
-use Amp\CancellationToken;
-use Amp\Promise;
+use Amp\Cancellation;
 use Phpactor\LanguageServerProtocol\Range;
 use Phpactor\LanguageServerProtocol\TextDocumentItem;
-use function Amp\call;
 use function Amp\delay;
 
 class AggregateCodeActionProvider implements CodeActionProvider
@@ -24,20 +22,18 @@ class AggregateCodeActionProvider implements CodeActionProvider
     /**
      * {@inheritDoc}
      */
-    public function provideActionsFor(TextDocumentItem $textDocument, Range $range, CancellationToken $cancel): Promise
+    public function provideActionsFor(TextDocumentItem $textDocument, Range $range, ?Cancellation $cancel = null): array
     {
-        return call(function () use ($textDocument, $range, $cancel) {
-            $actions = [];
-            foreach ($this->providers as $provider) {
-                $actions = array_merge($actions, yield $provider->provideActionsFor($textDocument, $range, $cancel));
+        $actions = [];
+        foreach ($this->providers as $provider) {
+            $actions = array_merge($actions, $provider->provideActionsFor($textDocument, $range, $cancel));
 
-                yield delay(0);
+            delay(0);
 
-                $cancel->throwIfRequested();
-            }
+            $cancel?->throwIfRequested();
+        }
 
-            return $actions;
-        });
+        return $actions;
     }
 
     /**
