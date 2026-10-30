@@ -7,10 +7,10 @@ use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 
 interface MethodRunner
 {
-    public function dispatch(Message $request): ?ResponseMessage;
+	public function dispatch(Message $request): ?ResponseMessage;
 
-    /**
-     * @param int|string $id
-     */
-    public function cancelRequest($id): void;
+	/**
+	 * @param int|string $id
+	 */
+	public function cancelRequest($id): void;
 }

@@ -2,6 +2,4 @@
 
 namespace Phpactor\LanguageServer\Event;
 
-final class WillShutdown
-{
-}
+final class WillShutdown {}

@@ -8,10 +8,13 @@ use Phpactor\LanguageServerProtocol\TextDocumentItem;
 
 interface DiagnosticsProvider
 {
-    /**
-     * @return array<Diagnostic>
-     */
-    public function provideDiagnostics(TextDocumentItem $textDocument, ?Cancellation $cancel = null): array;
+	/**
+	 * @return array<Diagnostic>
+	 */
+	public function provideDiagnostics(
+		TextDocumentItem $textDocument,
+		?Cancellation $cancel = null,
+	): array;
 
-    public function name(): string;
+	public function name(): string;
 }

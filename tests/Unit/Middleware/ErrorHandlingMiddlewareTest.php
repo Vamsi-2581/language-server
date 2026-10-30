@@ -18,97 +18,102 @@ use RuntimeException;
 
 class ErrorHandlingMiddlewareTest extends AsyncTestCase
 {
-    private TestLogger $logger;
+	private TestLogger $logger;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->logger = new TestLogger();
-    }
+	protected function setUp(): void
+	{
+		parent::setUp();
+		$this->logger = new TestLogger();
+	}
 
-    public function testDelegatesToNextHandlerIfMessageIsNotRequest(): void
-    {
-        $response = $this->createMiddleware()->process(
-            new NotificationMessage('foobar'),
-            new RequestHandler([
-                new ClosureMiddleware(function () {
-                    return new ResponseMessage(1, null);
-                })
-            ])
-        );
+	public function testDelegatesToNextHandlerIfMessageIsNotRequest(): void
+	{
+		$response = $this->createMiddleware()->process(
+			new NotificationMessage('foobar'),
+			new RequestHandler([
+				new ClosureMiddleware(function () {
+					return new ResponseMessage(1, null);
+				}),
+			]),
+		);
 
+		self::assertInstanceOf(ResponseMessage::class, $response);
+		self::assertEquals([], $this->logger->records);
+	}
 
-        self::assertInstanceOf(ResponseMessage::class, $response);
-        self::assertEquals([], $this->logger->records);
-    }
+	public function testRethrowsServerControlException(): void
+	{
+		$this->expectException(ExitSession::class);
 
-    public function testRethrowsServerControlException(): void
-    {
-        $this->expectException(ExitSession::class);
+		$this->createMiddleware()->process(
+			new NotificationMessage('foobar'),
+			new RequestHandler([
+				new ClosureMiddleware(function (): void {
+					throw new ExitSession('please');
+				}),
+			]),
+		);
+	}
 
-        $this->createMiddleware()->process(
-            new NotificationMessage('foobar'),
-            new RequestHandler([
-                new ClosureMiddleware(function (): void {
-                    throw new ExitSession('please');
-                })
-            ])
-        );
-    }
+	public function testLogsAndReturnsNullForNoticationException(): void
+	{
+		$response = $this->createMiddleware()->process(
+			new NotificationMessage('foobar'),
+			new RequestHandler([
+				new ClosureMiddleware(function (): void {
+					throw new RuntimeException('please');
+				}),
+			]),
+		);
 
-    public function testLogsAndReturnsNullForNoticationException(): void
-    {
-        $response = $this->createMiddleware()->process(
-            new NotificationMessage('foobar'),
-            new RequestHandler([
-                new ClosureMiddleware(function (): void {
-                    throw new RuntimeException('please');
-                })
-            ])
-        );
+		self::assertNull($response);
+		self::assertTrue($this->logger->hasErrorThatContains('please'));
+	}
 
-        self::assertNull($response);
-        self::assertTrue($this->logger->hasErrorThatContains('please'));
-    }
+	public function testDoesNotLogButReturnsErrorResponseForRequest(): void
+	{
+		$response = $this->createMiddleware()->process(
+			new RequestMessage(1, 'foobar', []),
+			new RequestHandler([
+				new ClosureMiddleware(function (): void {
+					throw new RuntimeException('please');
+				}),
+			]),
+		);
 
-    public function testDoesNotLogButReturnsErrorResponseForRequest(): void
-    {
-        $response = $this->createMiddleware()->process(
-            new RequestMessage(1, 'foobar', []),
-            new RequestHandler([
-                new ClosureMiddleware(function (): void {
-                    throw new RuntimeException('please');
-                })
-            ])
-        );
+		self::assertInstanceOf(ResponseMessage::class, $response);
+		assert($response instanceof ResponseMessage);
+		self::assertInstanceOf(ResponseError::class, $response->error);
+		self::assertStringContainsString(
+			'Exception [RuntimeException] please',
+			$response->error->message,
+		);
+		self::assertEquals(ErrorCodes::InternalError, $response->error->code);
+	}
 
-        self::assertInstanceOf(ResponseMessage::class, $response);
-        assert($response instanceof ResponseMessage);
-        self::assertInstanceOf(ResponseError::class, $response->error);
-        self::assertStringContainsString('Exception [RuntimeException] please', $response->error->message);
-        self::assertEquals(ErrorCodes::InternalError, $response->error->code);
-    }
+	public function testMethodNotFoundCodeForHandlerNotFound(): void
+	{
+		$response = $this->createMiddleware()->process(
+			new RequestMessage(1, 'foobar', []),
+			new RequestHandler([
+				new ClosureMiddleware(function (): void {
+					throw new HandlerNotFound('please');
+				}),
+			]),
+		);
 
-    public function testMethodNotFoundCodeForHandlerNotFound(): void
-    {
-        $response = $this->createMiddleware()->process(
-            new RequestMessage(1, 'foobar', []),
-            new RequestHandler([
-                new ClosureMiddleware(function (): void {
-                    throw new HandlerNotFound('please');
-                })
-            ])
-        );
+		self::assertInstanceOf(ResponseMessage::class, $response);
+		assert($response instanceof ResponseMessage);
+		self::assertInstanceOf(ResponseError::class, $response->error);
+		self::assertStringContainsString(
+			'Exception [Phpactor\LanguageServer\Core\Handler\HandlerNotFound] please',
+			$response->error->message,
+		);
+		self::assertEquals(ErrorCodes::MethodNotFound, $response->error->code);
+	}
 
-        self::assertInstanceOf(ResponseMessage::class, $response);
-        assert($response instanceof ResponseMessage);
-        self::assertInstanceOf(ResponseError::class, $response->error);
-        self::assertStringContainsString('Exception [Phpactor\LanguageServer\Core\Handler\HandlerNotFound] please', $response->error->message);
-        self::assertEquals(ErrorCodes::MethodNotFound, $response->error->code);
-    }
-
-    private function createMiddleware(): ErrorHandlingMiddleware
-    {
-        return new ErrorHandlingMiddleware($this->logger);
-    }
+	private function createMiddleware(): ErrorHandlingMiddleware
+	{
+		return new ErrorHandlingMiddleware($this->logger);
+	}
 }

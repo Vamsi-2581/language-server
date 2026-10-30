@@ -1,0 +1,18 @@
+# https://mago.carthage.software/guide/configuration
+php-version = "8.2"
+
+[source]
+paths = ["lib/", "tests/", "bin/", "example/"]
+includes = ["vendor"]
+
+[linter.rules]
+valid-docblock.enabled = true
+ambiguous-constant-access.enabled = true
+ambiguous-function-call.enabled = true
+literal-named-argument.enabled = false
+prefer-arrow-function.enabled = false
+prefer-early-continue.enabled = false
+no-else-clause.enabled = false
+no-duplicate-match-arm.enabled = false
+
+readable-literal.min-digits = 6

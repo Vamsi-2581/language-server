@@ -13,7 +13,9 @@
         devShells.default = pkgs.mkShellNoCC {
           buildInputs = with pkgs; [
             php82
-            php82Packages.composer
+            php82.packages.composer
+            mago
+            dprint
           ];
         };
       };

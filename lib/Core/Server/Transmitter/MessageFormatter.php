@@ -6,5 +6,5 @@ use Phpactor\LanguageServer\Core\Rpc\Message;
 
 interface MessageFormatter
 {
-    public function format(Message $message): string;
+	public function format(Message $message): string;
 }

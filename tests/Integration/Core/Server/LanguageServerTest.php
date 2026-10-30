@@ -7,7 +7,7 @@ use Amp\ByteStream\ReadableIterableStream;
 use Amp\ByteStream\WritableBuffer;
 use Amp\PHPUnit\AsyncTestCase;
 use Closure;
-use PHPUnit\Framework\Assert;
+use Exception;
 use Phpactor\LanguageServer\Core\Dispatcher\Dispatcher\ClosureDispatcher;
 use Phpactor\LanguageServer\Core\Dispatcher\Factory\ClosureDispatcherFactory;
 use Phpactor\LanguageServer\Core\Rpc\Message;
@@ -17,102 +17,105 @@ use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Core\Server\Initializer\PredefinedInitializer;
 use Phpactor\LanguageServer\Core\Server\LanguageServer;
 use Phpactor\LanguageServer\Core\Server\Parser\LspMessageReader;
-use Phpactor\LanguageServer\Core\Server\StreamProvider\ResourceStreamProvider;
 use Phpactor\LanguageServer\Core\Server\Stream\ResourceDuplexStream;
+use Phpactor\LanguageServer\Core\Server\StreamProvider\ResourceStreamProvider;
 use Phpactor\LanguageServer\Core\Server\Transmitter\LspMessageFormatter;
 use Phpactor\LanguageServer\Core\Server\Transmitter\LspMessageSerializer;
 use Phpactor\LanguageServer\Core\Server\Transmitter\MessageSerializer;
 use Phpactor\LanguageServer\Core\Server\Transmitter\TestMessageSerializer;
+use PHPUnit\Framework\Assert;
 use Psr\Log\NullLogger;
-use function Amp\async;
 use Revolt\EventLoop;
-use Exception;
+
+use function Amp\async;
 
 class LanguageServerTest extends AsyncTestCase
 {
-    /**
-     * @return void
-     */
-    public function testDispatchesRequest(): void
-    {
-        $response = $this->dispatchRequest(
-            new RequestMessage(1, 'foobar', []),
-            function (Message $message) {
-                if (!$message instanceof RequestMessage) {
-                    throw new Exception('not a request');
-                }
-                Assert::assertEquals('foobar', $message->method);
-                return new ResponseMessage(1, [
-                    'foo' => 'bar',
-                ]);
-            }
-        );
+	/**
+	 * @return void
+	 */
+	public function testDispatchesRequest(): void
+	{
+		$response = $this->dispatchRequest(
+			new RequestMessage(1, 'foobar', []),
+			function (Message $message) {
+				if (!$message instanceof RequestMessage) {
+					throw new Exception('not a request');
+				}
+				Assert::assertEquals('foobar', $message->method);
+				return new ResponseMessage(1, [
+					'foo' => 'bar',
+				]);
+			},
+		);
 
-        Assert::assertInstanceOf(RawMessage::class, $response);
-        Assert::assertEquals(['foo' => 'bar'], $response->body()['result']);
-    }
-    /**
-     * @return void
-     */
-    public function testHandlesMalformedRequest(): void
-    {
-        $serializer = new TestMessageSerializer('{"id":3,"foo":"bar"}');
-        $response = $this->dispatchRequest(
-            new RequestMessage(1, 'foobar', []),
-            function (Message $message) {
-                return new ResponseMessage(1, [
-                    'foo' => 'bar',
-                ]);
-            },
-            $serializer
-        );
+		Assert::assertInstanceOf(RawMessage::class, $response);
+		Assert::assertEquals(['foo' => 'bar'], $response->body()['result']);
+	}
 
-        Assert::assertInstanceOf(RawMessage::class, $response);
-        self::assertEquals(255, $response->body()['error']['code']);
+	/**
+	 * @return void
+	 */
+	public function testHandlesMalformedRequest(): void
+	{
+		$serializer = new TestMessageSerializer('{"id":3,"foo":"bar"}');
+		$response = $this->dispatchRequest(
+			new RequestMessage(1, 'foobar', []),
+			function (Message $message) {
+				return new ResponseMessage(1, [
+					'foo' => 'bar',
+				]);
+			},
+			$serializer,
+		);
 
-    }
-    /**
-     * @param Closure(Message): ResponseMessage|null $handler
-     */
-    private function dispatchRequest(
-        RequestMessage $request,
-        Closure $handler,
-        ?MessageSerializer $serializer = new LspMessageSerializer(),
-    ): ?RawMessage {
-        $this->setTimeout(1);
+		Assert::assertInstanceOf(RawMessage::class, $response);
+		self::assertEquals(255, $response->body()['error']['code']);
+	}
 
-        $formatter = new LspMessageFormatter($serializer);
-        $message = $formatter->format($request);
+	/**
+	 * @param Closure(Message): ResponseMessage|null $handler
+	 */
+	private function dispatchRequest(
+		RequestMessage $request,
+		Closure $handler,
+		?MessageSerializer $serializer = new LspMessageSerializer(),
+	): ?RawMessage {
+		$this->setTimeout(1);
 
-        $output = new WritableBuffer();
-        $stream = new ResourceDuplexStream(
-            new ReadableIterableStream((function () use ($message) {
-                yield $message;
-            })()),
-            $output
-        );
+		$formatter = new LspMessageFormatter($serializer);
+		$message = $formatter->format($request);
 
-        $server = new LanguageServer(
-            new ClosureDispatcherFactory(function () use ($handler) {
-                return new ClosureDispatcher($handler);
-            }),
-            new NullLogger(),
-            new ResourceStreamProvider($stream, new NullLogger()),
-            new PredefinedInitializer()
-        );
+		$output = new WritableBuffer();
+		$stream = new ResourceDuplexStream(
+			new ReadableIterableStream(
+				(function () use ($message) {
+					yield $message;
+				})(),
+			),
+			$output,
+		);
 
+		$server = new LanguageServer(
+			new ClosureDispatcherFactory(function () use ($handler) {
+				return new ClosureDispatcher($handler);
+			}),
+			new NullLogger(),
+			new ResourceStreamProvider($stream, new NullLogger()),
+			new PredefinedInitializer(),
+		);
 
-        EventLoop::delay(0.01, function () use ($server): void {
-            async(fn () => $server->shutdown());
-        });
+		EventLoop::delay(0.01, function () use ($server): void {
+			async(fn () => $server->shutdown());
+		});
 
-        $server->start();
+		$server->start();
 
-        $parser = new LspMessageReader(new ResourceDuplexStream(
-            new ReadableBuffer($output->buffer()),
-            new WritableBuffer()
-        ));
+		$parser = new LspMessageReader(new ResourceDuplexStream(
+			new ReadableBuffer($output->buffer()),
+			new WritableBuffer(),
+		));
 
-        return $parser->readMessage();
-    }
+		return $parser->readMessage();
+	}
 }

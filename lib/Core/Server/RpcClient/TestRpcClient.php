@@ -9,38 +9,40 @@ use Phpactor\LanguageServer\Core\Server\Transmitter\TestMessageTransmitter;
 
 final class TestRpcClient implements RpcClient
 {
-    private JsonRpcClient $client;
+	private JsonRpcClient $client;
 
-    public function __construct(private TestMessageTransmitter $transmitter, private TestResponseWatcher $responseWatcher)
-    {
-        $this->client = new JsonRpcClient($this->transmitter, $this->responseWatcher);
-    }
+	public function __construct(
+		private TestMessageTransmitter $transmitter,
+		private TestResponseWatcher $responseWatcher,
+	) {
+		$this->client = new JsonRpcClient($this->transmitter, $this->responseWatcher);
+	}
 
-    public static function create(): TestRpcClient
-    {
-        return new self(new TestMessageTransmitter(), new TestResponseWatcher());
-    }
+	public static function create(): TestRpcClient
+	{
+		return new self(new TestMessageTransmitter(), new TestResponseWatcher());
+	}
 
-    public function notification(string $method, array $params): void
-    {
-        $this->client->notification($method, $params);
-    }
+	public function notification(string $method, array $params): void
+	{
+		$this->client->notification($method, $params);
+	}
 
-    /**
-     * {@inheritDoc}
-     */
-    public function request(string $method, array $params): ResponseMessage
-    {
-        return $this->client->request($method, $params);
-    }
+	/**
+	 * {@inheritDoc}
+	 */
+	public function request(string $method, array $params): ResponseMessage
+	{
+		return $this->client->request($method, $params);
+	}
 
-    public function responseWatcher(): TestResponseWatcher
-    {
-        return $this->responseWatcher;
-    }
+	public function responseWatcher(): TestResponseWatcher
+	{
+		return $this->responseWatcher;
+	}
 
-    public function transmitter(): TestMessageTransmitter
-    {
-        return $this->transmitter;
-    }
+	public function transmitter(): TestMessageTransmitter
+	{
+		return $this->transmitter;
+	}
 }

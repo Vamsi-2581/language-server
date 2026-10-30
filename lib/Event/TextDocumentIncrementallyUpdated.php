@@ -7,23 +7,24 @@ use Phpactor\LanguageServerProtocol\VersionedTextDocumentIdentifier;
 
 class TextDocumentIncrementallyUpdated
 {
-    /**
-     * @param TextDocumentContentChangeIncrementalEvent[] $events
-     */
-    public function __construct(private VersionedTextDocumentIdentifier $identifier, private array $events)
-    {
-    }
+	/**
+	 * @param TextDocumentContentChangeIncrementalEvent[] $events
+	 */
+	public function __construct(
+		private VersionedTextDocumentIdentifier $identifier,
+		private array $events,
+	) {}
 
-    public function identifier(): VersionedTextDocumentIdentifier
-    {
-        return $this->identifier;
-    }
+	public function identifier(): VersionedTextDocumentIdentifier
+	{
+		return $this->identifier;
+	}
 
-    /**
-     * @return TextDocumentContentChangeIncrementalEvent[]
-     */
-    public function events(): array
-    {
-        return $this->events;
-    }
+	/**
+	 * @return TextDocumentContentChangeIncrementalEvent[]
+	 */
+	public function events(): array
+	{
+		return $this->events;
+	}
 }

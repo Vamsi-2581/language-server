@@ -10,20 +10,18 @@ use Phpactor\LanguageServer\Core\Server\ResponseWatcher;
 
 class ResponseHandlingMiddleware implements Middleware
 {
-    public function __construct(private ResponseWatcher $watcher)
-    {
-    }
+	public function __construct(private ResponseWatcher $watcher) {}
 
-    /**
-     * {@inheritDoc}
-     */
-    public function process(Message $request, RequestHandler $handler): ?ResponseMessage
-    {
-        if ($request instanceof ResponseMessage) {
-            $this->watcher->handle($request);
-            return null;
-        }
+	/**
+	 * {@inheritDoc}
+	 */
+	public function process(Message $request, RequestHandler $handler): ?ResponseMessage
+	{
+		if ($request instanceof ResponseMessage) {
+			$this->watcher->handle($request);
+			return null;
+		}
 
-        return $handler->handle($request);
-    }
+		return $handler->handle($request);
+	}
 }

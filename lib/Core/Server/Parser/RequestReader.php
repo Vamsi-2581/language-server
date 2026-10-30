@@ -6,5 +6,5 @@ use Phpactor\LanguageServer\Core\Rpc\RawMessage;
 
 interface RequestReader
 {
-    public function readMessage(): ?RawMessage;
+	public function readMessage(): ?RawMessage;
 }

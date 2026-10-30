@@ -3,8 +3,6 @@
 namespace Phpactor\LanguageServer\Tests\Unit\Middleware;
 
 use Amp\PHPUnit\AsyncTestCase;
-use Phpactor\LanguageServerProtocol\InitializeResult;
-use Phpactor\LanguageServerProtocol\ServerCapabilities;
 use Phpactor\LanguageServer\Core\Handler\CanRegisterCapabilities;
 use Phpactor\LanguageServer\Core\Handler\Handler;
 use Phpactor\LanguageServer\Core\Handler\Handlers;
@@ -15,6 +13,8 @@ use Phpactor\LanguageServer\Core\Rpc\RequestMessage;
 use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Event\Initialized;
 use Phpactor\LanguageServer\Middleware\InitializeMiddleware;
+use Phpactor\LanguageServerProtocol\InitializeResult;
+use Phpactor\LanguageServerProtocol\ServerCapabilities;
 use Prophecy\Argument;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Prophecy\Prophecy\ObjectProphecy;
@@ -23,120 +23,130 @@ use RuntimeException;
 
 class InitializeMiddlewareTest extends AsyncTestCase
 {
-    use ProphecyTrait;
+	use ProphecyTrait;
 
-    /**
-     * @var ObjectProphecy<EventDispatcherInterface>
-     */
-    private ObjectProphecy $dispatcher;
+	/**
+	 * @var ObjectProphecy<EventDispatcherInterface>
+	 */
+	private ObjectProphecy $dispatcher;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->dispatcher = $this->prophesize(EventDispatcherInterface::class);
-    }
+	protected function setUp(): void
+	{
+		parent::setUp();
+		$this->dispatcher = $this->prophesize(EventDispatcherInterface::class);
+	}
 
-    public function testReturnsOnInitializedNotification(): void
-    {
-        self::assertNull(
-            $this->createMiddleware()->process(
-                new NotificationMessage('initialized'),
-                new RequestHandler()
-            )
-        );
-        $this->dispatcher->dispatch(new Initialized())->shouldHaveBeenCalled();
-    }
+	public function testReturnsOnInitializedNotification(): void
+	{
+		self::assertNull(
+			$this->createMiddleware()->process(
+				new NotificationMessage('initialized'),
+				new RequestHandler(),
+			),
+		);
+		$this->dispatcher->dispatch(new Initialized())->shouldHaveBeenCalled();
+	}
 
-    public function testDelegatesToNextHandlerIfMessageIsNotRequest(): void
-    {
-        $this->expectException(MiddlewareTerminated::class);
-        self::assertNull(
-            $this->createMiddleware()->process(
-                new NotificationMessage('foobar'),
-                new RequestHandler()
-            )
-        );
-    }
+	public function testDelegatesToNextHandlerIfMessageIsNotRequest(): void
+	{
+		$this->expectException(MiddlewareTerminated::class);
+		self::assertNull(
+			$this->createMiddleware()->process(
+				new NotificationMessage('foobar'),
+				new RequestHandler(),
+			),
+		);
+	}
 
-    public function testExceptionIfInitializedTwice(): void
-    {
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Second initialize');
+	public function testExceptionIfInitializedTwice(): void
+	{
+		$this->expectException(RuntimeException::class);
+		$this->expectExceptionMessage('Second initialize');
 
-        $middleware = $this->createMiddleware();
+		$middleware = $this->createMiddleware();
 
-        $middleware->process(
-            new RequestMessage(1, 'initialize', [
-                'capabilities' => [],
-            ]),
-            new RequestHandler()
-        );
-        $middleware->process(
-            new RequestMessage(1, 'initialize', [
-                'capabilities' => [],
-            ]),
-            new RequestHandler()
-        );
-    }
+		$middleware->process(
+			new RequestMessage(1, 'initialize', [
+				'capabilities' => [],
+			]),
+			new RequestHandler(),
+		);
+		$middleware->process(
+			new RequestMessage(1, 'initialize', [
+				'capabilities' => [],
+			]),
+			new RequestHandler(),
+		);
+	}
 
-    public function testReturnsInitializedResponse(): void
-    {
-        $middleware = $this->createMiddleware([], [
-            'name' => 'test',
-            'version' => '12a'
-        ]);
+	public function testReturnsInitializedResponse(): void
+	{
+		$middleware = $this->createMiddleware([], [
+			'name' => 'test',
+			'version' => '12a',
+		]);
 
-        $response = $middleware->process(
-            new RequestMessage(1, 'initialize', [
-                'capabilities' => [],
-            ]),
-            new RequestHandler()
-        );
-        self::assertInstanceOf(ResponseMessage::class, $response);
-        assert($response instanceof ResponseMessage);
-        self::assertInstanceOf(InitializeResult::class, $response->result);
-        self::assertEquals([
-            'name' => 'test',
-            'version' => '12a'
-        ], $response->result->serverInfo);
-    }
+		$response = $middleware->process(
+			new RequestMessage(1, 'initialize', [
+				'capabilities' => [],
+			]),
+			new RequestHandler(),
+		);
+		self::assertInstanceOf(ResponseMessage::class, $response);
+		assert($response instanceof ResponseMessage);
+		self::assertInstanceOf(InitializeResult::class, $response->result);
+		self::assertEquals(
+			[
+				'name' => 'test',
+				'version' => '12a',
+			],
+			$response->result->serverInfo,
+		);
+	}
 
-    public function testHandlersCanRegisterCapabiltiies(): void
-    {
-        $handler = $this->prophesize(Handler::class)
-            ->willImplement(CanRegisterCapabilities::class);
-        $handler->methods()->willReturn([
-            'foo' => 'bar',
-        ]);
-        $handler->registerCapabiltiies(Argument::type(ServerCapabilities::class))->will(function (array $args): void {
-            $capabilities = $args[0];
-            assert($capabilities instanceof ServerCapabilities);
-            $capabilities->hoverProvider = true;
-        })->shouldBeCalled();
+	public function testHandlersCanRegisterCapabiltiies(): void
+	{
+		$handler = $this->prophesize(Handler::class)
+			->willImplement(CanRegisterCapabilities::class);
+		$handler
+			->methods()
+			->willReturn([
+				'foo' => 'bar',
+			]);
+		$handler
+			->registerCapabiltiies(Argument::type(ServerCapabilities::class))
+			->will(function (array $args): void {
+				$capabilities = $args[0];
+				assert($capabilities instanceof ServerCapabilities);
+				$capabilities->hoverProvider = true;
+			})
+			->shouldBeCalled();
 
-        $middleware = $this->createMiddleware([
-            $handler->reveal()
-        ]);
+		$middleware = $this->createMiddleware([
+			$handler->reveal(),
+		]);
 
-        $response = $middleware->process(
-            new RequestMessage(1, 'initialize', [
-                'capabilities' => [],
-            ]),
-            new RequestHandler()
-        );
+		$response = $middleware->process(
+			new RequestMessage(1, 'initialize', [
+				'capabilities' => [],
+			]),
+			new RequestHandler(),
+		);
 
-        self::assertInstanceOf(ResponseMessage::class, $response);
-        assert($response instanceof ResponseMessage);
-        self::assertInstanceOf(InitializeResult::class, $response->result);
-        self::assertTrue($response->result->capabilities->hoverProvider);
-    }
+		self::assertInstanceOf(ResponseMessage::class, $response);
+		assert($response instanceof ResponseMessage);
+		self::assertInstanceOf(InitializeResult::class, $response->result);
+		self::assertTrue($response->result->capabilities->hoverProvider);
+	}
 
-    private function createMiddleware(array $handlers = [], array $serverInfo = []): InitializeMiddleware
-    {
-        return new InitializeMiddleware(
-            new Handlers(...$handlers),
-            $this->dispatcher->reveal(),
-            $serverInfo
-        );
-    }
+	private function createMiddleware(
+		array $handlers = [],
+		array $serverInfo = [],
+	): InitializeMiddleware {
+		return new InitializeMiddleware(
+			new Handlers(...$handlers),
+			$this->dispatcher->reveal(),
+			$serverInfo,
+		);
+	}
 }

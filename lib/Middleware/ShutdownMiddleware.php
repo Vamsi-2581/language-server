@@ -2,6 +2,7 @@
 
 namespace Phpactor\LanguageServer\Middleware;
 
+use Phpactor\LanguageServer\Adapter\Psr\NullEventDispatcher;
 use Phpactor\LanguageServer\Core\Middleware\Middleware;
 use Phpactor\LanguageServer\Core\Middleware\RequestHandler;
 use Phpactor\LanguageServer\Core\Rpc\ErrorCodes;
@@ -12,64 +13,63 @@ use Phpactor\LanguageServer\Core\Rpc\ResponseError;
 use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Core\Server\Exception\ExitSession;
 use Phpactor\LanguageServer\Event\WillShutdown;
-use Phpactor\LanguageServer\Adapter\Psr\NullEventDispatcher;
 use Psr\EventDispatcher\EventDispatcherInterface;
+
 use function Amp\delay;
 
 final class ShutdownMiddleware implements Middleware
 {
-    const METHOD_SHUTDOWN = 'shutdown';
-    const METHOD_EXIT = 'exit';
+	const METHOD_SHUTDOWN = 'shutdown';
+	const METHOD_EXIT = 'exit';
 
-    private bool $shuttingDown = false;
+	private bool $shuttingDown = false;
 
-    public function __construct(
-        private EventDispatcherInterface $eventDispatcher = new NullEventDispatcher(),
-        private int $gracePeriod = 500,
-    ) {
-    }
+	public function __construct(
+		private EventDispatcherInterface $eventDispatcher = new NullEventDispatcher(),
+		private int $gracePeriod = 500,
+	) {}
 
-    public function process(Message $request, RequestHandler $handler): ?ResponseMessage
-    {
-        if ($request instanceof NotificationMessage) {
-            if ($request->method === self::METHOD_EXIT) {
-                throw new ExitSession('Exit method invoked by client');
-            }
+	public function process(Message $request, RequestHandler $handler): ?ResponseMessage
+	{
+		if ($request instanceof NotificationMessage) {
+			if ($request->method === self::METHOD_EXIT) {
+				throw new ExitSession('Exit method invoked by client');
+			}
 
-            if ($this->shuttingDown) {
-                return null;
-            }
-        }
+			if ($this->shuttingDown) {
+				return null;
+			}
+		}
 
-        if ($request instanceof RequestMessage) {
-            if ($this->shuttingDown) {
-                return new ResponseMessage(
-                    $request->id,
-                    null,
-                    new ResponseError(
-                        ErrorCodes::InvalidRequest,
-                        'Server is currently shutting down, cannot serve requests'
-                    )
-                );
-            }
+		if ($request instanceof RequestMessage) {
+			if ($this->shuttingDown) {
+				return new ResponseMessage(
+					$request->id,
+					null,
+					new ResponseError(
+						ErrorCodes::InvalidRequest,
+						'Server is currently shutting down, cannot serve requests',
+					),
+				);
+			}
 
-            if ($request->method === self::METHOD_SHUTDOWN) {
-                $this->shuttingDown = true;
-                return $this->shutdown($request);
-            }
-        }
+			if ($request->method === self::METHOD_SHUTDOWN) {
+				$this->shuttingDown = true;
+				return $this->shutdown($request);
+			}
+		}
 
-        return $handler->handle($request);
-    }
+		return $handler->handle($request);
+	}
 
-    public function shutdown(RequestMessage $request): ResponseMessage
-    {
-        $this->eventDispatcher->dispatch(new WillShutdown());
-        delay($this->gracePeriod / 1000);
+	public function shutdown(RequestMessage $request): ResponseMessage
+	{
+		$this->eventDispatcher->dispatch(new WillShutdown());
+		delay($this->gracePeriod / 1000);
 
-        return new ResponseMessage(
-            $request->id,
-            null
-        );
-    }
+		return new ResponseMessage(
+			$request->id,
+			null,
+		);
+	}
 }

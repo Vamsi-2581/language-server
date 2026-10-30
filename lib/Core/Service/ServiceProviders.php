@@ -3,9 +3,8 @@
 namespace Phpactor\LanguageServer\Core\Service;
 
 use ArrayIterator;
-use IteratorAggregate;
-
 use Countable;
+use IteratorAggregate;
 use Phpactor\LanguageServer\Core\Service\Exception\UnknownService;
 use Traversable;
 
@@ -14,56 +13,56 @@ use Traversable;
  */
 final class ServiceProviders implements Countable, IteratorAggregate
 {
-    /**
-     * @var array<string,ServiceProvider>
-     */
-    private array $services = [];
+	/**
+	 * @var array<string,ServiceProvider>
+	 */
+	private array $services = [];
 
-    public function __construct(ServiceProvider ...$serviceProviders)
-    {
-        foreach ($serviceProviders as $serviceProvider) {
-            foreach ($serviceProvider->services() as $methodName) {
-                $this->services[(string)$methodName] = $serviceProvider;
-            }
-        }
-    }
+	public function __construct(ServiceProvider ...$serviceProviders)
+	{
+		foreach ($serviceProviders as $serviceProvider) {
+			foreach ($serviceProvider->services() as $methodName) {
+				$this->services[(string) $methodName] = $serviceProvider;
+			}
+		}
+	}
 
-    /**
-     * {@inheritDoc}
-     */
-    public function count(): int
-    {
-        return count($this->services);
-    }
+	/**
+	 * {@inheritDoc}
+	 */
+	public function count(): int
+	{
+		return count($this->services);
+	}
 
-    public function getIterator(): Traversable
-    {
-        return new ArrayIterator($this->services);
-    }
+	public function getIterator(): Traversable
+	{
+		return new ArrayIterator($this->services);
+	}
 
-    /**
-     * @return array<string>
-     */
-    public function names(): array
-    {
-        return array_keys($this->services);
-    }
+	/**
+	 * @return array<string>
+	 */
+	public function names(): array
+	{
+		return array_keys($this->services);
+	}
 
-    public function get(string $serviceName): ServiceProvider
-    {
-        $this->assertExists($serviceName);
+	public function get(string $serviceName): ServiceProvider
+	{
+		$this->assertExists($serviceName);
 
-        return $this->services[$serviceName];
-    }
+		return $this->services[$serviceName];
+	}
 
-    public function assertExists(string $serviceName): void
-    {
-        if (!isset($this->services[$serviceName])) {
-            throw new UnknownService(sprintf(
-                'Service "%s" not known, known services: "%s"',
-                $serviceName,
-                implode('", "', array_keys($this->services))
-            ));
-        }
-    }
+	public function assertExists(string $serviceName): void
+	{
+		if (!isset($this->services[$serviceName])) {
+			throw new UnknownService(sprintf(
+				'Service "%s" not known, known services: "%s"',
+				$serviceName,
+				implode('", "', array_keys($this->services)),
+			));
+		}
+	}
 }

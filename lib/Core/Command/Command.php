@@ -2,6 +2,4 @@
 
 namespace Phpactor\LanguageServer\Core\Command;
 
-interface Command
-{
-}
+interface Command {}

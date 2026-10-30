@@ -6,7 +6,5 @@ use Phpactor\LanguageServer\Core\Rpc\Message;
 
 final class NullMessageTransmitter implements MessageTransmitter
 {
-    public function transmit(Message $response): void
-    {
-    }
+	public function transmit(Message $response): void {}
 }

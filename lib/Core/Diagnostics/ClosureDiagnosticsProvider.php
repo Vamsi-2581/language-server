@@ -8,19 +8,19 @@ use Phpactor\LanguageServerProtocol\TextDocumentItem;
 
 class ClosureDiagnosticsProvider implements DiagnosticsProvider
 {
-    public function __construct(private Closure $closure, private string $name = 'closure')
-    {
-    }
+	public function __construct(private Closure $closure, private string $name = 'closure') {}
 
-    public function provideDiagnostics(TextDocumentItem $textDocument, ?Cancellation $cancel = null): array
-    {
-        $closure = $this->closure;
+	public function provideDiagnostics(
+		TextDocumentItem $textDocument,
+		?Cancellation $cancel = null,
+	): array {
+		$closure = $this->closure;
 
-        return $closure($textDocument);
-    }
+		return $closure($textDocument);
+	}
 
-    public function name(): string
-    {
-        return $this->name;
-    }
+	public function name(): string
+	{
+		return $this->name;
+	}
 }

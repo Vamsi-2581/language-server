@@ -3,140 +3,142 @@
 namespace Phpactor\LanguageServer\Core\Server\Parser;
 
 use Phpactor\LanguageServer\Core\Rpc\RawMessage;
+use Phpactor\LanguageServer\Core\Server\Parser\Exception\CouldNotDecodeBody;
+use Phpactor\LanguageServer\Core\Server\Parser\Exception\CouldNotParseHeader;
 use Phpactor\LanguageServer\Core\Server\Stream\DuplexStream;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+
 use function json_encode;
-use Phpactor\LanguageServer\Core\Server\Parser\Exception\CouldNotDecodeBody;
-use Phpactor\LanguageServer\Core\Server\Parser\Exception\CouldNotParseHeader;
 
 final class LspMessageReader implements RequestReader
 {
-    const EVENT_REQUEST_READY = 'request.ready';
-    const HEADER_CONTENT_LENGTH = 'Content-Length';
+	const EVENT_REQUEST_READY = 'request.ready';
+	const HEADER_CONTENT_LENGTH = 'Content-Length';
 
-    private string $buffer = '';
+	private string $buffer = '';
 
-    private string $overflow = '';
+	private string $overflow = '';
 
-    /**
-     * @var null|array<string>
-     */
-    private ?array $headers = null;
+	/**
+	 * @var null|array<string>
+	 */
+	private ?array $headers = null;
 
-    public function __construct(
-        private DuplexStream $stream,
-        private LoggerInterface $logger = new NullLogger(),
-    ) {
-    }
+	public function __construct(
+		private DuplexStream $stream,
+		private LoggerInterface $logger = new NullLogger(),
+	) {}
 
-    public function readMessage(): ?RawMessage
-    {
-        if (null !== $request = $this->processChunk($this->overflow)) {
-            return $request;
-        }
+	public function readMessage(): ?RawMessage
+	{
+		if (null !== ($request = $this->processChunk($this->overflow))) {
+			return $request;
+		}
 
-        while (null !== $chunk = $this->stream->read()) {
-            if (null !== $request = $this->processChunk($chunk)) {
-                return $request;
-            }
-        }
+		while (null !== ($chunk = $this->stream->read())) {
+			if (null !== ($request = $this->processChunk($chunk))) {
+				return $request;
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
 
-    private function processChunk(string $chunk): ?RawMessage
-    {
-        for ($i = 0; $i < strlen($chunk); $i++) {
-            $this->buffer .= $chunk[$i];
+	private function processChunk(string $chunk): ?RawMessage
+	{
+		for ($i = 0; $i < strlen($chunk); $i++) {
+			$this->buffer .= $chunk[$i];
 
-            if (null !== $request = $this->parseRequest()) {
-                $this->overflow = substr($chunk, $i + 1);
-                return $request;
-            }
-        }
+			if (null !== ($request = $this->parseRequest())) {
+				$this->overflow = substr($chunk, $i + 1);
+				return $request;
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
 
-    private function parseRequest(): ?RawMessage
-    {
-        // start by parsing the headers:
-        if ($this->headers === null && substr($this->buffer, -4, 4) === "\r\n\r\n"
-        ) {
-            $this->headers = $this->parseHeaders(
-                substr($this->buffer, 0, -4)
-            );
-            $this->buffer = '';
-            return null;
-        }
+	private function parseRequest(): ?RawMessage
+	{
+		// start by parsing the headers:
+		if ($this->headers === null && substr($this->buffer, -4, 4) === "\r\n\r\n") {
+			$this->headers = $this->parseHeaders(
+				substr($this->buffer, 0, -4),
+			);
+			$this->buffer = '';
+			return null;
+		}
 
-        if (null === $this->headers) {
-            return null;
-        }
+		if (null === $this->headers) {
+			return null;
+		}
 
-        // we finished parsing the headers, now parse the body
-        if (!isset($this->headers[self::HEADER_CONTENT_LENGTH])) {
-            throw new CouldNotParseHeader(sprintf(
-                'Header did not contain mandatory Content-Length in "%s"',
-                json_encode($this->headers)
-            ));
-        }
+		// we finished parsing the headers, now parse the body
+		if (!isset($this->headers[self::HEADER_CONTENT_LENGTH])) {
+			throw new CouldNotParseHeader(sprintf(
+				'Header did not contain mandatory Content-Length in "%s"',
+				json_encode($this->headers),
+			));
+		}
 
-        $contentLength = (int) $this->headers[self::HEADER_CONTENT_LENGTH];
+		$contentLength = (int) $this->headers[self::HEADER_CONTENT_LENGTH];
 
-        if (strlen($this->buffer) !== $contentLength) {
-            return null;
-        }
+		if (strlen($this->buffer) !== $contentLength) {
+			return null;
+		}
 
-        $request = new RawMessage($this->headers, $this->decodeBody($this->buffer));
-        $this->buffer = '';
-        $this->headers = null;
+		$request = new RawMessage($this->headers, $this->decodeBody($this->buffer));
+		$this->buffer = '';
+		$this->headers = null;
 
-        return $request;
-    }
+		return $request;
+	}
 
-    private function parseHeaders(string $rawHeaders): array
-    {
-        $lines = explode("\r\n", $rawHeaders);
-        $headers = [];
+	private function parseHeaders(string $rawHeaders): array
+	{
+		$lines = explode("\r\n", $rawHeaders);
+		$headers = [];
 
-        foreach ($lines as $line) {
-            $parts = array_map(function ($value) {
-                return trim($value);
-            }, explode(':', $line));
-            if (count($parts) != 2) {
-                $this->logger->warning(sprintf(
-                    'Could not parse header: %s',
-                    $line
-                ));
-                continue;
-            }
-            $headers[$parts[0]] = $parts[1];
-        }
+		foreach ($lines as $line) {
+			$parts = array_map(
+				function ($value) {
+					return trim($value);
+				},
+				explode(':', $line),
+			);
+			if (count($parts) != 2) {
+				$this->logger->warning(sprintf(
+					'Could not parse header: %s',
+					$line,
+				));
+				continue;
+			}
+			$headers[$parts[0]] = $parts[1];
+		}
 
-        return $headers;
-    }
+		return $headers;
+	}
 
-    private function decodeBody(string $string): array
-    {
-        $array = json_decode($string, true);
+	private function decodeBody(string $string): array
+	{
+		$array = json_decode($string, true);
 
-        if (null === $array) {
-            throw new CouldNotDecodeBody(sprintf(
-                'Could not decode "%s": %s',
-                $string,
-                json_last_error_msg()
-            ));
-        }
+		if (null === $array) {
+			throw new CouldNotDecodeBody(sprintf(
+				'Could not decode "%s": %s',
+				$string,
+				json_last_error_msg(),
+			));
+		}
 
-        if (!is_array($array)) {
-            throw new CouldNotDecodeBody(sprintf(
-                'Expected an array got "%s"',
-                gettype($array)
-            ));
-        }
+		if (!is_array($array)) {
+			throw new CouldNotDecodeBody(sprintf(
+				'Expected an array got "%s"',
+				gettype($array),
+			));
+		}
 
-        return $array;
-    }
+		return $array;
+	}
 }

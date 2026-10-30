@@ -12,21 +12,22 @@ use Ramsey\Uuid\Uuid;
 
 final class JsonRpcClient implements RpcClient
 {
-    public function __construct(private MessageTransmitter $transmitter, private ResponseWatcher $responseWatcher)
-    {
-    }
+	public function __construct(
+		private MessageTransmitter $transmitter,
+		private ResponseWatcher $responseWatcher,
+	) {}
 
-    public function notification(string $method, array $params): void
-    {
-        $this->transmitter->transmit(new NotificationMessage($method, $params));
-    }
+	public function notification(string $method, array $params): void
+	{
+		$this->transmitter->transmit(new NotificationMessage($method, $params));
+	}
 
-    public function request(string $method, array $params): ResponseMessage
-    {
-        $requestId = Uuid::uuid4()->__toString();
-        $response = $this->responseWatcher->waitForResponse((string)$requestId);
-        $this->transmitter->transmit(new RequestMessage($requestId, $method, $params));
+	public function request(string $method, array $params): ResponseMessage
+	{
+		$requestId = Uuid::uuid4()->__toString();
+		$response = $this->responseWatcher->waitForResponse((string) $requestId);
+		$this->transmitter->transmit(new RequestMessage($requestId, $method, $params));
 
-        return $response->await();
-    }
+		return $response->await();
+	}
 }

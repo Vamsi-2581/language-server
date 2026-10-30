@@ -7,5 +7,5 @@ use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 
 interface Dispatcher
 {
-    public function dispatch(Message $request): ?ResponseMessage;
+	public function dispatch(Message $request): ?ResponseMessage;
 }

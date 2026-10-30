@@ -6,17 +6,18 @@ use Phpactor\LanguageServerProtocol\TextDocumentIdentifier;
 
 class TextDocumentSaved
 {
-    public function __construct(private TextDocumentIdentifier $identifier, private ?string $text = null)
-    {
-    }
+	public function __construct(
+		private TextDocumentIdentifier $identifier,
+		private ?string $text = null,
+	) {}
 
-    public function identifier(): TextDocumentIdentifier
-    {
-        return $this->identifier;
-    }
+	public function identifier(): TextDocumentIdentifier
+	{
+		return $this->identifier;
+	}
 
-    public function text(): ?string
-    {
-        return $this->text;
-    }
+	public function text(): ?string
+	{
+		return $this->text;
+	}
 }

@@ -7,5 +7,5 @@ use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 
 interface Middleware
 {
-    public function process(Message $request, RequestHandler $handler): ?ResponseMessage;
+	public function process(Message $request, RequestHandler $handler): ?ResponseMessage;
 }

@@ -9,19 +9,17 @@ use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 
 final class ClosureDispatcher implements Dispatcher
 {
-    /**
-     * @param Closure(Message): ?ResponseMessage $closure
-     */
-    public function __construct(private Closure $closure)
-    {
-    }
+	/**
+	 * @param Closure(Message): ?ResponseMessage $closure
+	 */
+	public function __construct(private Closure $closure) {}
 
-    /**
-     * {@inheritDoc}
-     */
-    public function dispatch(Message $request): ?ResponseMessage
-    {
-        /** @phpstan-ignore-next-line */
-        return $this->closure->__invoke($request);
-    }
+	/**
+	 * {@inheritDoc}
+	 */
+	public function dispatch(Message $request): ?ResponseMessage
+	{
+		/** @phpstan-ignore-next-line */
+		return $this->closure->__invoke($request);
+	}
 }

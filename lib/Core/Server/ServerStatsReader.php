@@ -6,9 +6,9 @@ use DateInterval;
 
 interface ServerStatsReader
 {
-    public function uptime(): DateInterval;
+	public function uptime(): DateInterval;
 
-    public function connectionCount(): int;
+	public function connectionCount(): int;
 
-    public function requestCount(): int;
+	public function requestCount(): int;
 }

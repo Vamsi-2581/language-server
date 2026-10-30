@@ -10,29 +10,29 @@ use RuntimeException;
 
 final class DeferredResponseWatcher implements ResponseWatcher
 {
-    /**
-     * @var array<string|int, DeferredFuture<ResponseMessage>>
-     */
-    private array $watchers = [];
+	/**
+	 * @var array<string|int, DeferredFuture<ResponseMessage>>
+	 */
+	private array $watchers = [];
 
-    public function handle(ResponseMessage $response): void
-    {
-        if (isset($this->watchers[$response->id])) {
-            $this->watchers[$response->id]->complete($response);
-            return;
-        }
+	public function handle(ResponseMessage $response): void
+	{
+		if (isset($this->watchers[$response->id])) {
+			$this->watchers[$response->id]->complete($response);
+			return;
+		}
 
-        throw new RuntimeException(sprintf(
-            'Response to unknown request "%s"',
-            $response->id
-        ));
-    }
+		throw new RuntimeException(sprintf(
+			'Response to unknown request "%s"',
+			$response->id,
+		));
+	}
 
-    public function waitForResponse(int|string $requestId): Future
-    {
-        $deferred = new DeferredFuture();
-        $this->watchers[$requestId] = $deferred;
+	public function waitForResponse(int|string $requestId): Future
+	{
+		$deferred = new DeferredFuture();
+		$this->watchers[$requestId] = $deferred;
 
-        return $deferred->getFuture();
-    }
+		return $deferred->getFuture();
+	}
 }

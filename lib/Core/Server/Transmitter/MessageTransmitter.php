@@ -6,5 +6,5 @@ use Phpactor\LanguageServer\Core\Rpc\Message;
 
 interface MessageTransmitter
 {
-    public function transmit(Message $response): void;
+	public function transmit(Message $response): void;
 }

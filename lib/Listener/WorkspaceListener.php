@@ -10,34 +10,32 @@ use Psr\EventDispatcher\ListenerProviderInterface;
 
 class WorkspaceListener implements ListenerProviderInterface
 {
-    public function __construct(private Workspace $workspace)
-    {
-    }
+	public function __construct(private Workspace $workspace) {}
 
-    /**
-     * {@inheritDoc}
-     */
-    public function getListenersForEvent(object $event): iterable
-    {
-        if ($event instanceof TextDocumentClosed) {
-            yield function (TextDocumentClosed $closed): void {
-                $this->workspace->remove($closed->identifier());
-            };
-            return;
-        }
+	/**
+	 * {@inheritDoc}
+	 */
+	public function getListenersForEvent(object $event): iterable
+	{
+		if ($event instanceof TextDocumentClosed) {
+			yield function (TextDocumentClosed $closed): void {
+				$this->workspace->remove($closed->identifier());
+			};
+			return;
+		}
 
-        if ($event instanceof TextDocumentOpened) {
-            yield function (TextDocumentOpened $opened): void {
-                $this->workspace->open($opened->textDocument());
-            };
-            return;
-        }
+		if ($event instanceof TextDocumentOpened) {
+			yield function (TextDocumentOpened $opened): void {
+				$this->workspace->open($opened->textDocument());
+			};
+			return;
+		}
 
-        if ($event instanceof TextDocumentUpdated) {
-            yield function (TextDocumentUpdated $updated): void {
-                $this->workspace->update($updated->identifier(), $updated->updatedText());
-            };
-            return;
-        }
-    }
+		if ($event instanceof TextDocumentUpdated) {
+			yield function (TextDocumentUpdated $updated): void {
+				$this->workspace->update($updated->identifier(), $updated->updatedText());
+			};
+			return;
+		}
+	}
 }

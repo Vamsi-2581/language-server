@@ -6,103 +6,105 @@ use Amp\DeferredCancellation;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
+
 use function Amp\async;
 
 class ServiceManager
 {
-    /**
-     * @var DeferredCancellation[]
-     */
-    private array $cancellations = [];
+	/**
+	 * @var DeferredCancellation[]
+	 */
+	private array $cancellations = [];
 
-    public function __construct(private ServiceProviders $serviceProviders, private LoggerInterface $logger)
-    {
-    }
+	public function __construct(
+		private ServiceProviders $serviceProviders,
+		private LoggerInterface $logger,
+	) {}
 
-    /**
-     * @return array<string>
-     */
-    public function runningServices(): array
-    {
-        return array_keys($this->cancellations);
-    }
+	/**
+	 * @return array<string>
+	 */
+	public function runningServices(): array
+	{
+		return array_keys($this->cancellations);
+	}
 
-    public function startAll(): void
-    {
-        foreach ($this->serviceProviders->names() as $serviceName) {
-            $this->start($serviceName);
-        }
-    }
+	public function startAll(): void
+	{
+		foreach ($this->serviceProviders->names() as $serviceName) {
+			$this->start($serviceName);
+		}
+	}
 
-    public function start(string $serviceName): void
-    {
-        $provider = $this->serviceProviders->get($serviceName);
+	public function start(string $serviceName): void
+	{
+		$provider = $this->serviceProviders->get($serviceName);
 
-        if (isset($this->cancellations[$serviceName])) {
-            throw new RuntimeException(sprintf(
-                'Service "%s" is already running',
-                $serviceName
-            ));
-        }
+		if (isset($this->cancellations[$serviceName])) {
+			throw new RuntimeException(sprintf(
+				'Service "%s" is already running',
+				$serviceName,
+			));
+		}
 
-        $this->logger->info(sprintf('Starting service: %s (%s)', $serviceName, $provider::class));
-        
-        if (!method_exists($provider, $serviceName)) {
-            throw new RuntimeException(sprintf(
-                'Service provider "%s" has no service method "%s"',
-                $provider::class,
-                $serviceName
-            ));
-        }
-        
-        $cancel = new DeferredCancellation();
-        $this->cancellations[$serviceName] = $cancel;
-        $token = $cancel->getCancellation();
+		$this->logger->info(sprintf('Starting service: %s (%s)', $serviceName, $provider::class));
 
-        async(function () use ($provider, $serviceName, $token): void {
-            try {
-                $provider->$serviceName($token);
-            } catch (Throwable $error) {
-                $this->logger->error(sprintf(
-                    'Error in service "%s" "%s:%s": %s',
-                    $serviceName,
-                    $provider::class,
-                    __FUNCTION__,
-                    $error->getMessage()
-                ));
-            }
-        });
-    }
+		if (!method_exists($provider, $serviceName)) {
+			throw new RuntimeException(sprintf(
+				'Service provider "%s" has no service method "%s"',
+				$provider::class,
+				$serviceName,
+			));
+		}
 
-    public function stop(string $serviceName): void
-    {
-        $this->serviceProviders->assertExists($serviceName);
+		$cancel = new DeferredCancellation();
+		$this->cancellations[$serviceName] = $cancel;
+		$token = $cancel->getCancellation();
 
-        if (!isset($this->cancellations[$serviceName])) {
-            throw new RuntimeException(sprintf(
-                'Cannot stop service "%s" it has not been started, running services: "%s"',
-                $serviceName,
-                implode('", "', array_keys($this->cancellations))
-            ));
-        }
+		async(function () use ($provider, $serviceName, $token): void {
+			try {
+				$provider->$serviceName($token);
+			} catch (Throwable $error) {
+				$this->logger->error(sprintf(
+					'Error in service "%s" "%s:%s": %s',
+					$serviceName,
+					$provider::class,
+					__FUNCTION__,
+					$error->getMessage(),
+				));
+			}
+		});
+	}
 
-        $tokenSource = $this->cancellations[$serviceName];
-        assert($tokenSource instanceof DeferredCancellation);
-        $tokenSource->cancel();
-        unset($this->cancellations[$serviceName]);
-    }
+	public function stop(string $serviceName): void
+	{
+		$this->serviceProviders->assertExists($serviceName);
 
-    public function isRunning(string $serviceName): bool
-    {
-        $this->serviceProviders->assertExists($serviceName);
+		if (!isset($this->cancellations[$serviceName])) {
+			throw new RuntimeException(sprintf(
+				'Cannot stop service "%s" it has not been started, running services: "%s"',
+				$serviceName,
+				implode('", "', array_keys($this->cancellations)),
+			));
+		}
 
-        return isset($this->cancellations[$serviceName]);
-    }
+		$tokenSource = $this->cancellations[$serviceName];
+		assert($tokenSource instanceof DeferredCancellation);
+		$tokenSource->cancel();
+		unset($this->cancellations[$serviceName]);
+	}
 
-    public function stopAll(): void
-    {
-        foreach ($this->serviceProviders->names() as $serviceName) {
-            $this->stop($serviceName);
-        }
-    }
+	public function isRunning(string $serviceName): bool
+	{
+		$this->serviceProviders->assertExists($serviceName);
+
+		return isset($this->cancellations[$serviceName]);
+	}
+
+	public function stopAll(): void
+	{
+		foreach ($this->serviceProviders->names() as $serviceName) {
+			$this->stop($serviceName);
+		}
+	}
 }

@@ -9,27 +9,25 @@ use Psr\EventDispatcher\ListenerProviderInterface;
 
 class ServiceListener implements ListenerProviderInterface
 {
-    public function __construct(private ServiceManager $serviceManager)
-    {
-    }
+	public function __construct(private ServiceManager $serviceManager) {}
 
-    /**
-     * {@inheritDoc}
-     */
-    public function getListenersForEvent(object $event): iterable
-    {
-        if ($event instanceof Initialized) {
-            yield function (Initialized $closed): void {
-                $this->serviceManager->startAll();
-            };
-            return;
-        }
+	/**
+	 * {@inheritDoc}
+	 */
+	public function getListenersForEvent(object $event): iterable
+	{
+		if ($event instanceof Initialized) {
+			yield function (Initialized $closed): void {
+				$this->serviceManager->startAll();
+			};
+			return;
+		}
 
-        if ($event instanceof WillShutdown) {
-            yield function (WillShutdown $closed): void {
-                $this->serviceManager->stopAll();
-            };
-            return;
-        }
-    }
+		if ($event instanceof WillShutdown) {
+			yield function (WillShutdown $closed): void {
+				$this->serviceManager->stopAll();
+			};
+			return;
+		}
+	}
 }

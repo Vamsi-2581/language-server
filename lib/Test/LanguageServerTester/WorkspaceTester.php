@@ -3,26 +3,24 @@
 namespace Phpactor\LanguageServer\Test\LanguageServerTester;
 
 use Amp\Future;
-use Phpactor\LanguageServerProtocol\ExecuteCommandParams;
 use Phpactor\LanguageServer\Test\LanguageServerTester;
+use Phpactor\LanguageServerProtocol\ExecuteCommandParams;
 
 class WorkspaceTester
 {
-    public function __construct(private LanguageServerTester $tester)
-    {
-    }
+	public function __construct(private LanguageServerTester $tester) {}
 
-    /**
-     * @return Future<mixed>
-     */
-    public function executeCommand(string $command, ?array $args = []): Future
-    {
-        return $this->tester->request(
-            'workspace/executeCommand',
-            new ExecuteCommandParams(
-                $command,
-                $args
-            )
-        );
-    }
+	/**
+	 * @return Future<mixed>
+	 */
+	public function executeCommand(string $command, ?array $args = []): Future
+	{
+		return $this->tester->request(
+			'workspace/executeCommand',
+			new ExecuteCommandParams(
+				$command,
+				$args,
+			),
+		);
+	}
 }

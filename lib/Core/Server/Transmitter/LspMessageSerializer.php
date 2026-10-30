@@ -8,59 +8,59 @@ use RuntimeException;
 
 final class LspMessageSerializer implements MessageSerializer
 {
-    public function serialize(Message $message): string
-    {
-        $data = $this->normalize($message);
-        if (!is_array($data)) {
-            throw new RuntimeException('Expected an array');
-        }
-        if ($message instanceof ResponseMessage) {
-            $data = $this->ensureOnlyResultOrErrorSet($data);
-        }
-        $decoded = json_encode($data);
+	public function serialize(Message $message): string
+	{
+		$data = $this->normalize($message);
+		if (!is_array($data)) {
+			throw new RuntimeException('Expected an array');
+		}
+		if ($message instanceof ResponseMessage) {
+			$data = $this->ensureOnlyResultOrErrorSet($data);
+		}
+		$decoded = json_encode($data);
 
-        if (false === $decoded) {
-            throw new RuntimeException(sprintf(
-                'Could not encode JSON: "%s"',
-                \json_last_error_msg()
-            ));
-        }
+		if (false === $decoded) {
+			throw new RuntimeException(sprintf(
+				'Could not encode JSON: "%s"',
+				\json_last_error_msg(),
+			));
+		}
 
-        return $decoded;
-    }
+		return $decoded;
+	}
 
-    /**
-     * Normalize a message before being serialized by recursively applying array_filter
-     * and removing null values
-     *
-     * @param mixed $message
-     */
-    public function normalize($message): mixed
-    {
-        if (is_object($message)) {
-            $message = (array) $message;
-        }
+	/**
+	 * Normalize a message before being serialized by recursively applying array_filter
+	 * and removing null values
+	 *
+	 * @param mixed $message
+	 */
+	public function normalize($message): mixed
+	{
+		if (is_object($message)) {
+			$message = (array) $message;
+		}
 
-        if (!is_array($message)) {
-            return $message;
-        }
+		if (!is_array($message)) {
+			return $message;
+		}
 
-        return array_filter(array_map([$this, 'normalize'], $message), function ($value): bool {
-            return $value !== null;
-        });
-    }
+		return array_filter(array_map([$this, 'normalize'], $message), function ($value): bool {
+			return $value !== null;
+		});
+	}
 
-    private function ensureOnlyResultOrErrorSet(array $data): array
-    {
-        if (array_key_exists('error', $data) && array_key_exists('result', $data)) {
-            unset($data['result']);
-            return $data;
-        }
+	private function ensureOnlyResultOrErrorSet(array $data): array
+	{
+		if (array_key_exists('error', $data) && array_key_exists('result', $data)) {
+			unset($data['result']);
+			return $data;
+		}
 
-        if (!array_key_exists('error', $data) && !array_key_exists('result', $data)) {
-            $data['result'] = null;
-        }
+		if (!array_key_exists('error', $data) && !array_key_exists('result', $data)) {
+			$data['result'] = null;
+		}
 
-        return $data;
-    }
+		return $data;
+	}
 }

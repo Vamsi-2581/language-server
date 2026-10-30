@@ -7,8 +7,8 @@ use Phpactor\LanguageServerProtocol\TextEdit;
 
 interface Formatter
 {
-    /**
-     * @return list<TextEdit>|null
-     */
-    public function format(TextDocumentItem $textDocument): ?array;
+	/**
+	 * @return list<TextEdit>|null
+	 */
+	public function format(TextDocumentItem $textDocument): ?array;
 }

@@ -8,24 +8,21 @@ use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 
 final class RequestHandler
 {
-    public function __construct(
-        /** @var array<Middleware> */
-        private array $queue = []
-    ) {
-    }
+	public function __construct(
+		/** @var array<Middleware> */
+		private array $queue = [],
+	) {}
 
-    public function handle(Message $request): ?ResponseMessage
-    {
-        $middleware = array_shift($this->queue);
+	public function handle(Message $request): ?ResponseMessage
+	{
+		$middleware = array_shift($this->queue);
 
-        if (!$middleware) {
-            throw new MiddlewareTerminated(
-                'Middleware terminated (no middleware handled the request)'
-            );
-        }
+		if (!$middleware) {
+			throw new MiddlewareTerminated('Middleware terminated (no middleware handled the request)');
+		}
 
-        assert($middleware instanceof Middleware);
+		assert($middleware instanceof Middleware);
 
-        return $middleware->process($request, $this);
-    }
+		return $middleware->process($request, $this);
+	}
 }

@@ -3,11 +3,6 @@
 namespace Phpactor\LanguageServer\Handler\TextDocument;
 
 use Amp\Cancellation;
-use Phpactor\LanguageServerProtocol\CodeAction;
-use Phpactor\LanguageServerProtocol\CodeActionOptions;
-use Phpactor\LanguageServerProtocol\CodeActionParams;
-use Phpactor\LanguageServerProtocol\CodeActionRequest;
-use Phpactor\LanguageServerProtocol\ServerCapabilities;
 use Phpactor\LanguageServer\Core\CodeAction\CodeActionProvider;
 use Phpactor\LanguageServer\Core\Handler\CanRegisterCapabilities;
 use Phpactor\LanguageServer\Core\Handler\Handler;
@@ -15,47 +10,51 @@ use Phpactor\LanguageServer\Core\Workspace\Workspace;
 use Phpactor\LanguageServer\WorkDoneProgress\ProgressNotifier;
 use Phpactor\LanguageServer\WorkDoneProgress\SilentWorkDoneProgressNotifier;
 use Phpactor\LanguageServer\WorkDoneProgress\WorkDoneToken;
+use Phpactor\LanguageServerProtocol\CodeAction;
+use Phpactor\LanguageServerProtocol\CodeActionOptions;
+use Phpactor\LanguageServerProtocol\CodeActionParams;
+use Phpactor\LanguageServerProtocol\CodeActionRequest;
+use Phpactor\LanguageServerProtocol\ServerCapabilities;
 
 class CodeActionHandler implements Handler, CanRegisterCapabilities
 {
-    public function __construct(
-        private CodeActionProvider $provider,
-        private Workspace $workspace,
-        private ProgressNotifier $notifier = new SilentWorkDoneProgressNotifier(),
-    ) {
-    }
+	public function __construct(
+		private CodeActionProvider $provider,
+		private Workspace $workspace,
+		private ProgressNotifier $notifier = new SilentWorkDoneProgressNotifier(),
+	) {}
 
-    /**
-     * {@inheritDoc}
-     */
-    public function methods(): array
-    {
-        return [
-            CodeActionRequest::METHOD => 'codeAction'
-        ];
-    }
+	/**
+	 * {@inheritDoc}
+	 */
+	public function methods(): array
+	{
+		return [
+			CodeActionRequest::METHOD => 'codeAction',
+		];
+	}
 
-    public function registerCapabiltiies(ServerCapabilities $capabilities): void
-    {
-        $options = new CodeActionOptions($this->provider->kinds());
-        $capabilities->codeActionProvider = $options;
-    }
+	public function registerCapabiltiies(ServerCapabilities $capabilities): void
+	{
+		$options = new CodeActionOptions($this->provider->kinds());
+		$capabilities->codeActionProvider = $options;
+	}
 
-    /**
-     * @return array<CodeAction>
-     */
-    public function codeAction(CodeActionParams $params, ?Cancellation $cancel = null): array
-    {
-        $token = WorkDoneToken::generate();
-        $this->notifier->create($token);
-        $document = $this->workspace->get($params->textDocument->uri);
-        $this->notifier->begin($token, title: 'Resolving code actions');
-        try {
-            $actions = $this->provider->provideActionsFor($document, $params->range, $cancel);
-        } finally {
-            $this->notifier->end($token);
-        }
+	/**
+	 * @return array<CodeAction>
+	 */
+	public function codeAction(CodeActionParams $params, ?Cancellation $cancel = null): array
+	{
+		$token = WorkDoneToken::generate();
+		$this->notifier->create($token);
+		$document = $this->workspace->get($params->textDocument->uri);
+		$this->notifier->begin($token, title: 'Resolving code actions');
+		try {
+			$actions = $this->provider->provideActionsFor($document, $params->range, $cancel);
+		} finally {
+			$this->notifier->end($token);
+		}
 
-        return $actions;
-    }
+		return $actions;
+	}
 }

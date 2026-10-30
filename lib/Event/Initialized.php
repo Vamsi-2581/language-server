@@ -2,6 +2,4 @@
 
 namespace Phpactor\LanguageServer\Event;
 
-class Initialized
-{
-}
+class Initialized {}

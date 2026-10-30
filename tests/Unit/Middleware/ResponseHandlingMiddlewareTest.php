@@ -3,76 +3,74 @@
 namespace Phpactor\LanguageServer\Tests\Unit\Middleware;
 
 use Amp\PHPUnit\AsyncTestCase;
-use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 use Phpactor\LanguageServer\Core\Middleware\RequestHandler;
+use Phpactor\LanguageServer\Core\Rpc\NotificationMessage;
+use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
+use Phpactor\LanguageServer\Core\Server\ResponseWatcher;
 use Phpactor\LanguageServer\Core\Server\ResponseWatcher\DeferredResponseWatcher;
 use Phpactor\LanguageServer\Middleware\ClosureMiddleware;
-use Phpactor\LanguageServer\Core\Rpc\NotificationMessage;
-use Phpactor\LanguageServer\Core\Server\ResponseWatcher;
 use Phpactor\LanguageServer\Middleware\ResponseHandlingMiddleware;
 
 class ResponseHandlingMiddlewareTest extends AsyncTestCase
 {
-    private ResponseWatcher $watcher;
+	private ResponseWatcher $watcher;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->watcher = new DeferredResponseWatcher();
-    }
+	protected function setUp(): void
+	{
+		parent::setUp();
+		$this->watcher = new DeferredResponseWatcher();
+	}
 
-    public function testDelegatesToNextHandlerIfMessageIsNotResponse(): void
-    {
-        $response = $this->createMiddleware()->process(
-            new NotificationMessage('foobar'),
-            new RequestHandler([
-                new ClosureMiddleware(function () {
-                    return new ResponseMessage(1, null);
-                })
-            ])
-        );
+	public function testDelegatesToNextHandlerIfMessageIsNotResponse(): void
+	{
+		$response = $this->createMiddleware()->process(
+			new NotificationMessage('foobar'),
+			new RequestHandler([
+				new ClosureMiddleware(function () {
+					return new ResponseMessage(1, null);
+				}),
+			]),
+		);
 
+		self::assertInstanceOf(ResponseMessage::class, $response);
+	}
 
-        self::assertInstanceOf(ResponseMessage::class, $response);
-    }
+	public function testResolvesResponsePromise(): void
+	{
+		$future = $this->watcher->waitForResponse(1);
+		$response = new ResponseMessage(1, 'foobar');
 
-    public function testResolvesResponsePromise(): void
-    {
-        $future = $this->watcher->waitForResponse(1);
-        $response = new ResponseMessage(1, 'foobar');
+		$responseResponse = $this->createMiddleware()->process(
+			$response,
+			new RequestHandler([
+				new ClosureMiddleware(function () {
+					return new ResponseMessage(1, null);
+				}),
+			]),
+		);
 
-        $responseResponse = $this->createMiddleware()->process(
-            $response,
-            new RequestHandler([
-                new ClosureMiddleware(function () {
-                    return new ResponseMessage(1, null);
-                })
-            ])
-        );
+		$resolvedResponse = $future->await();
 
-        $resolvedResponse = $future->await();
+		self::assertNull($responseResponse);
+		self::assertSame($response, $resolvedResponse);
+	}
 
-        self::assertNull($responseResponse);
-        self::assertSame($response, $resolvedResponse);
-    }
+	public function testResolves(): void
+	{
+		$response = $this->createMiddleware()->process(
+			new NotificationMessage('foobar'),
+			new RequestHandler([
+				new ClosureMiddleware(function () {
+					return new ResponseMessage(1, null);
+				}),
+			]),
+		);
 
-    public function testResolves(): void
-    {
-        $response = $this->createMiddleware()->process(
-            new NotificationMessage('foobar'),
-            new RequestHandler([
-                new ClosureMiddleware(function () {
-                    return new ResponseMessage(1, null);
-                })
-            ])
-        );
+		self::assertInstanceOf(ResponseMessage::class, $response);
+	}
 
-
-        self::assertInstanceOf(ResponseMessage::class, $response);
-    }
-
-    private function createMiddleware(): ResponseHandlingMiddleware
-    {
-        return new ResponseHandlingMiddleware($this->watcher);
-    }
+	private function createMiddleware(): ResponseHandlingMiddleware
+	{
+		return new ResponseHandlingMiddleware($this->watcher);
+	}
 }

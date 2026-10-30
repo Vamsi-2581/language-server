@@ -1,0 +1,50 @@
+{
+	"excludes": [
+		"!/.vscode",
+		"composer.lock",
+		"flake.lock",
+	],
+	"useTabs": true,
+	"indentWidth": 2,
+	"lineWidth": 100,
+	"newLineKind": "lf",
+	"json": {
+		"associations": [".swift-format"],
+		"trailingCommas": "jsonc",
+		"jsonTrailingCommaFiles": [
+			"dprint.json",
+			".vscode/*.json",
+		],
+	},
+	"toml": {
+		"indentTables": "never",
+		"indentEntries": "never",
+	},
+	"markdown": {
+		"textWrap": "always",
+		"table.cellPadding": "space",
+	},
+	"mago": {
+		"phpVersionMajor": 8,
+		"phpVersionMinor": 2,
+		"nullTypeHint": "question",
+		"inlineEmptyClasslikeBraces": true,
+		"inlineSingleBreakingValueArgument": true,
+		"arrayTableStyleAlignment": false,
+		"spaceBeforeArrowFunctionParameterListParenthesis": true,
+		"preserveBreakingMemberAccessChain": true,
+		"preserveBreakingArgumentList": true,
+		"preserveBreakingArrayLike": true,
+		"preserveBreakingParameterList": true,
+		"preserveBreakingAttributeList": true,
+		"preserveBreakingConditionalExpression": true,
+		"breakPromotedPropertiesList": false,
+		"alwaysBreakNamedArgumentsList": false,
+	},
+	"plugins": [
+		"npm:@dprint/json@0.25.2",
+		"npm:@dprint/toml@0.9.0",
+		"npm:@dprint/markdown@0.28.2",
+		"npm:@dprint/mago@0.37.0",
+	],
+}

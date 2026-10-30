@@ -8,14 +8,14 @@ use Phpactor\TestUtils\PHPUnit\TestCase;
 
 class SilentProgressNotifierTest extends TestCase
 {
-    public function testNotifier(): void
-    {
-        $notifier = new SilentWorkDoneProgressNotifier();
-        $token = WorkDoneToken::generate();
-        $notifier->create($token);
-        $notifier->begin($token, 'Foobar');
-        $notifier->report($token);
-        $notifier->end($token);
-        $this->addToAssertionCount(1);
-    }
+	public function testNotifier(): void
+	{
+		$notifier = new SilentWorkDoneProgressNotifier();
+		$token = WorkDoneToken::generate();
+		$notifier->create($token);
+		$notifier->begin($token, 'Foobar');
+		$notifier->report($token);
+		$notifier->end($token);
+		$this->addToAssertionCount(1);
+	}
 }

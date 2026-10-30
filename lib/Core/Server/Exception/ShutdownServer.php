@@ -2,6 +2,4 @@
 
 namespace Phpactor\LanguageServer\Core\Server\Exception;
 
-final class ShutdownServer extends ServerControl
-{
-}
+final class ShutdownServer extends ServerControl {}

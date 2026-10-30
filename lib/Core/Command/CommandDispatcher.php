@@ -9,49 +9,49 @@ use RuntimeException;
  */
 class CommandDispatcher
 {
-    /**
-     * @param array<string,Command> $commandMap Map of command names to invokable objects
-     */
-    public function __construct(private array $commandMap = [])
-    {
-        foreach ($commandMap as $id => $command) {
-            $this->addCommand($id, $command);
-        }
-    }
+	/**
+	 * @param array<string,Command> $commandMap Map of command names to invokable objects
+	 */
+	public function __construct(private array $commandMap = [])
+	{
+		foreach ($commandMap as $id => $command) {
+			$this->addCommand($id, $command);
+		}
+	}
 
-    /**
-     * @return array<string>
-     */
-    public function registeredCommands(): array
-    {
-        return array_keys($this->commandMap);
-    }
+	/**
+	 * @return array<string>
+	 */
+	public function registeredCommands(): array
+	{
+		return array_keys($this->commandMap);
+	}
 
-    /**
-     * @param array<int,mixed> $args
-     */
-    public function dispatch(string $command, array $args = []): mixed
-    {
-        if (!isset($this->commandMap[$command])) {
-            throw new RuntimeException(sprintf(
-                'Command "%s" not found, known commands: "%s"',
-                $command,
-                implode('", "', array_keys($this->commandMap))
-            ));
-        }
+	/**
+	 * @param array<int,mixed> $args
+	 */
+	public function dispatch(string $command, array $args = []): mixed
+	{
+		if (!isset($this->commandMap[$command])) {
+			throw new RuntimeException(sprintf(
+				'Command "%s" not found, known commands: "%s"',
+				$command,
+				implode('", "', array_keys($this->commandMap)),
+			));
+		}
 
-        return $this->commandMap[$command]->__invoke(...$args);
-    }
+		return $this->commandMap[$command]->__invoke(...$args);
+	}
 
-    private function addCommand(string $id, Command $invokable): void
-    {
-        if (!is_callable($invokable)) {
-            throw new RuntimeException(sprintf(
-                'Object "%s" is not invokable',
-                $invokable::class
-            ));
-        }
+	private function addCommand(string $id, Command $invokable): void
+	{
+		if (!is_callable($invokable)) {
+			throw new RuntimeException(sprintf(
+				'Object "%s" is not invokable',
+				$invokable::class,
+			));
+		}
 
-        $this->commandMap[$id] = $invokable;
-    }
+		$this->commandMap[$id] = $invokable;
+	}
 }

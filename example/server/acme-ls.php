@@ -9,5 +9,5 @@ use Psr\Log\NullLogger;
 
 $logger = new NullLogger();
 LanguageServerBuilder::create(new AcmeLsDispatcherFactory($logger))
-    ->build()
-    ->run();
+	->build()
+	->run();

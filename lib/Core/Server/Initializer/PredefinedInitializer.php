@@ -2,10 +2,10 @@
 
 namespace Phpactor\LanguageServer\Core\Server\Initializer;
 
-use Phpactor\LanguageServerProtocol\ClientCapabilities;
-use Phpactor\LanguageServerProtocol\InitializeParams;
 use Phpactor\LanguageServer\Core\Rpc\Message;
 use Phpactor\LanguageServer\Core\Server\Initializer;
+use Phpactor\LanguageServerProtocol\ClientCapabilities;
+use Phpactor\LanguageServerProtocol\InitializeParams;
 
 /**
  * Use pre-defined initialization parameters.
@@ -13,15 +13,17 @@ use Phpactor\LanguageServer\Core\Server\Initializer;
  */
 final class PredefinedInitializer implements Initializer
 {
-    public function __construct(private InitializeParams $params = new InitializeParams(new ClientCapabilities()))
-    {
-    }
+	public function __construct(
+		private InitializeParams $params = new InitializeParams(
+			new ClientCapabilities(),
+		),
+	) {}
 
-    /**
-     * {@inheritDoc}
-     */
-    public function provideInitializeParams(Message $message): InitializeParams
-    {
-        return $this->params;
-    }
+	/**
+	 * {@inheritDoc}
+	 */
+	public function provideInitializeParams(Message $message): InitializeParams
+	{
+		return $this->params;
+	}
 }

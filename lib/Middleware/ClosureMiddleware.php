@@ -10,16 +10,14 @@ use Phpactor\LanguageServer\Core\Rpc\ResponseMessage;
 
 class ClosureMiddleware implements Middleware
 {
-    public function __construct(private Closure $closure)
-    {
-    }
+	public function __construct(private Closure $closure) {}
 
-    /**
-     * {@inheritDoc}
-     */
-    public function process(Message $request, RequestHandler $handler): ?ResponseMessage
-    {
-        /** @phpstan-ignore-next-line */
-        return $this->closure->__invoke($request, $handler);
-    }
+	/**
+	 * {@inheritDoc}
+	 */
+	public function process(Message $request, RequestHandler $handler): ?ResponseMessage
+	{
+		/** @phpstan-ignore-next-line */
+		return $this->closure->__invoke($request, $handler);
+	}
 }

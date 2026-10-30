@@ -13,33 +13,32 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 
 class ExitHandlerTest extends HandlerTestCase
 {
-    use ProphecyTrait;
+	use ProphecyTrait;
 
-    /**
-     * @var ObjectProphecy<EventDispatcherInterface>
-     */
-    private ObjectProphecy $eventDispatcher;
+	/**
+	 * @var ObjectProphecy<EventDispatcherInterface>
+	 */
+	private ObjectProphecy $eventDispatcher;
 
-    public function setUp(): void
-    {
-        $this->eventDispatcher = $this->prophesize(EventDispatcherInterface::class);
-    }
+	public function setUp(): void
+	{
+		$this->eventDispatcher = $this->prophesize(EventDispatcherInterface::class);
+	}
 
+	public function handler(): Handler
+	{
+		return new ExitHandler($this->eventDispatcher->reveal());
+	}
 
-    public function handler(): Handler
-    {
-        return new ExitHandler($this->eventDispatcher->reveal());
-    }
+	public function testThrowsExitSessionException(): void
+	{
+		$this->expectException(ExitSession::class);
+		$this->dispatch('exit', []);
+	}
 
-    public function testThrowsExitSessionException(): void
-    {
-        $this->expectException(ExitSession::class);
-        $this->dispatch('exit', []);
-    }
-
-    public function testShutdownDoesNothing(): void
-    {
-        $this->dispatch('shutdown', []);
-        $this->eventDispatcher->dispatch(new WillShutdown())->shouldHaveBeenCalled();
-    }
+	public function testShutdownDoesNothing(): void
+	{
+		$this->dispatch('shutdown', []);
+		$this->eventDispatcher->dispatch(new WillShutdown())->shouldHaveBeenCalled();
+	}
 }

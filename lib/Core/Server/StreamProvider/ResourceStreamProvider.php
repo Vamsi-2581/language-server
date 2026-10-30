@@ -7,29 +7,30 @@ use Psr\Log\LoggerInterface;
 
 final class ResourceStreamProvider implements StreamProvider
 {
-    private bool $provided = false;
+	private bool $provided = false;
 
-    public function __construct(private ResourceDuplexStream $duplexStream, private LoggerInterface $logger)
-    {
-    }
+	public function __construct(
+		private ResourceDuplexStream $duplexStream,
+		private LoggerInterface $logger,
+	) {}
 
-    public function accept(): ?Connection
-    {
-        // resource connections are valid only for
-        // the length of the client connnection
-        if ($this->provided) {
-            return null;
-        }
+	public function accept(): ?Connection
+	{
+		// resource connections are valid only for
+		// the length of the client connnection
+		if ($this->provided) {
+			return null;
+		}
 
-        $this->provided = true;
+		$this->provided = true;
 
-        $this->logger->info('Listening on STDIO');
+		$this->logger->info('Listening on STDIO');
 
-        return new Connection('stdio', $this->duplexStream);
-    }
+		return new Connection('stdio', $this->duplexStream);
+	}
 
-    public function close(): void
-    {
-        $this->duplexStream->close();
-    }
+	public function close(): void
+	{
+		$this->duplexStream->close();
+	}
 }

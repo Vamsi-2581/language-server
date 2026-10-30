@@ -4,6 +4,4 @@ namespace Phpactor\LanguageServer\Core\Rpc\Exception;
 
 use RuntimeException;
 
-class CouldNotCreateMessage extends RuntimeException
-{
-}
+class CouldNotCreateMessage extends RuntimeException {}
