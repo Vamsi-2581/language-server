@@ -27,7 +27,7 @@ This is similar to :doc:`method handlers <handlers>` with the exception that:
   the server stops it by cancelling the token.
 
 Cancellation source lifetime
----------------------------
+----------------------------
 
 If you create a token with ``Amp\DeferredCancellation``, keep the source object
 alive while the token is in use. Destroying the source requests cancellation, so
