@@ -186,7 +186,7 @@ In the above example, when the server cancels this request, the exception will
 be thrown and we will return early.
 
 Cancellation source lifetime
----------------------------
+----------------------------
 
 If you create a token with ``Amp\DeferredCancellation``, keep the source object
 alive while the token is in use. Destroying the source requests cancellation, so
